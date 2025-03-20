@@ -3,6 +3,190 @@ from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import mysql.connector
 import re
+from tkinter import filedialog, messagebox
+
+
+# Fonction de connexion à MySQL
+def get_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",  # Changez si nécessaire
+        password="",   # Changez si nécessaire
+        database="formulaire"  # Base de données où les informations seront stockées
+    )
+
+
+
+
+def formulaire_medicale(window, utilisateur_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS dossiers_medical (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        utilisateur_id INT,
+        antecedents_familiaux TEXT,
+        antecedents_personnels TEXT,
+        interventions TEXT,
+        vaccinations TEXT,
+        traitements TEXT,
+        date_consultation DATE,
+        motif TEXT,
+        symptomes TEXT,
+        diagnostic TEXT,
+        medecin TEXT,
+        temperature FLOAT,
+        tension TEXT,
+        imc TEXT,
+        analyses TEXT,
+        medicaments TEXT,
+        conseils TEXT,
+        prochain_rdv DATE,
+        consentement TEXT,
+        signature_medecin TEXT,
+        signature_patient TEXT,
+        fichier TEXT,
+        FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
+    )''')
+    conn.commit()
+
+    def ajouter_fichier():
+        fichier_path = filedialog.askopenfilename(title="Sélectionner un fichier médical",
+                                                  filetypes=[("Tous les fichiers", "."), 
+                                                            ("PDF", "*.pdf"), 
+                                                            ("Images", ".jpg;.png"),
+                                                            ("Documents", ".docx;.txt")])
+        if fichier_path:
+            fichier_label.config(text=f"Fichier sélectionné: {fichier_path}")
+
+    def afficher_entry(section, index):
+        if sections[section]["variables"][index].get():
+            sections[section]["entries"][index].pack(side="left", padx=5)
+        else:
+            sections[section]["entries"][index].pack_forget()
+
+    def submit():
+      try:
+        data = {section: {} for section in sections.keys()}
+        for section, content in sections.items():
+            for i, var in enumerate(content["variables"]):
+                if var.get():
+                    data[section][content["elements"][i]] = content["entries"][i].get()
+
+        fichier = fichier_label.cget("text").replace("Fichier sélectionné: ", "")
+
+        # Liste des champs et valeurs à insérer
+        champs_valeurs = [
+            ("utilisateur_id", utilisateur_id),
+            ("antecedents_familiaux", data["Antécédents Médicaux"].get("Antécédents familiaux", "")),
+            ("antecedents_personnels", data["Antécédents Médicaux"].get("Antécédents personnels", "")),
+            ("interventions", data["Antécédents Médicaux"].get("Interventions chirurgicales passées", "")),
+            ("vaccinations", data["Antécédents Médicaux"].get("Vaccinations", "")),
+            ("traitements", data["Antécédents Médicaux"].get("Traitements en cours", "")),
+            ("date_consultation", data["Informations sur la Consultation"].get("Date de la consultation", "")),
+            ("motif", data["Informations sur la Consultation"].get("Motif de la consultation", "")),
+            ("symptomes", data["Informations sur la Consultation"].get("Symptômes", "")),
+            ("diagnostic", data["Informations sur la Consultation"].get("Diagnostic", "")),
+            ("medecin", data["Informations sur la Consultation"].get("Médecin responsable", "")),
+            ("temperature", data["Tests Médicaux"].get("Température corporelle", "")),
+            ("tension", data["Tests Médicaux"].get("Tension artérielle", "")),
+            ("imc", data["Tests Médicaux"].get("Poids et taille (IMC)", "")),
+            ("analyses", data["Tests Médicaux"].get("Résultats d’analyses", "")),
+            ("medicaments", data["Traitement & Prescription Médicale"].get("Médicaments prescrits", "")),
+            ("conseils", data["Traitement & Prescription Médicale"].get("Conseils et recommandations médicales", "")),
+            ("prochain_rdv", data["Traitement & Prescription Médicale"].get("Prochain rendez-vous", "")),
+            ("consentement", data["Consentements & Signature"].get("Consentement du patient", "")),
+            ("signature_medecin", data["Consentements & Signature"].get("Signature du médecin", "")),
+            ("signature_patient", data["Consentements & Signature"].get("Signature du patient", "")),
+            ("fichier", fichier)
+        ]
+
+        # Insérer chaque champ individuellement et afficher un message après chaque insertion
+        for champ, valeur in champs_valeurs:
+            cursor.execute(f"UPDATE dossiers_medical SET {champ} = %s WHERE utilisateur_id = %s", (valeur, utilisateur_id))
+            conn.commit()
+            messagebox.showinfo("Insertion réussie", f"Champ '{champ}' inséré avec succès !")
+
+        messagebox.showinfo("Succès", "Tous les champs ont été insérés avec succès !")
+
+      except Exception as e:
+        messagebox.showerror("Erreur", f"Une erreur est survenue : {e}")
+
+
+    window.title("Formulaire Médical")
+    window.geometry("700x750")
+    main_frame = LabelFrame(window, text="Formulaire Médical", font=("Arial", 14, "bold"), padx=10, pady=10, bd=2, relief="ridge", fg="blue")
+    main_frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+    canvas = Canvas(main_frame)
+    scrollbar = Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+    scrollable_frame = Frame(canvas)
+    scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+
+    sections = {
+        "Antécédents Médicaux": [
+            "Antécédents familiaux", "Antécédents personnels", "Interventions chirurgicales passées", 
+            "Vaccinations", "Traitements en cours"
+        ],
+        "Informations sur la Consultation": [
+            "Date de la consultation", "Motif de la consultation", "Symptômes", 
+            "Diagnostic", "Médecin responsable"
+        ],
+        "Tests Médicaux": [
+            "Température corporelle", "Tension artérielle", "Poids et taille (IMC)", "Résultats d’analyses"
+        ],
+        "Traitement & Prescription Médicale": [
+            "Médicaments prescrits", "Conseils et recommandations médicales", "Prochain rendez-vous"
+        ],
+        "Consentements & Signature": [
+            "Consentement du patient", "Signature du médecin", "Signature du patient"
+        ]
+    }
+
+    for section, elements in sections.items():
+        section_frame = LabelFrame(scrollable_frame, text=section, font=("Arial", 12, "bold"), padx=10, pady=10, bd=1, relief="solid", fg="blue")
+        section_frame.pack(pady=10, fill="x")
+        variables = []
+        entries = []
+        for i, element in enumerate(elements):
+            entry_frame = Frame(section_frame)
+            entry_frame.pack(pady=5, anchor="w")
+            var = BooleanVar()
+            chk = Checkbutton(entry_frame, text=element, variable=var, command=lambda s=section, idx=i: afficher_entry(s, idx))
+            chk.pack(side="left")
+            if section == "Informations sur la Consultation" and element == "Date de la consultation":
+                entry = DateEntry(entry_frame, width=15, background="blue", foreground="white", date_pattern="yyyy-mm-dd")
+            else:
+                entry = Entry(entry_frame, width=40)
+            entry.pack_forget()
+            entries.append(entry)
+            variables.append(var)
+        sections[section] = {"elements": elements, "variables": variables, "entries": entries}
+
+    fichier_frame = LabelFrame(scrollable_frame, text="Ajout de Fichier Médical", font=("Arial", 12, "bold"), padx=10, pady=10, bd=1, relief="solid")
+    fichier_frame.pack(pady=20, padx=10, fill="x")
+    ajouter_btn = Button(fichier_frame, text="Ajouter un fichier médical", command=ajouter_fichier, bg="blue", fg="white")
+    ajouter_btn.pack(pady=5)
+    fichier_label = Label(fichier_frame, text="", wraplength=500, fg="black")
+    fichier_label.pack(pady=5)
+    submit_btn = Button(scrollable_frame, text="Soumettre", command=submit, bg="green", fg="white")
+    submit_btn.pack(pady=20)
+
+    # Placer la gestion de la fermeture AVANT mainloop
+    def fermer_connexion():
+       cursor.close()
+       conn.close()
+
+    window.protocol("WM_DELETE_WINDOW", fermer_connexion)
+    window.mainloop()
+
+
+ 
+
 
 class Formulaire:
     def __init__(self, root):
@@ -25,27 +209,26 @@ class Formulaire:
         Label(frame1, text="Prénom:", bg="white").grid(row=2, column=0, padx=20, pady=5, sticky=W)
         self.entry_prenom = ttk.Entry(frame1, width=30)
         self.entry_prenom.grid(row=2, column=1, pady=5)
-        abelVide=Label(frame1, text="",bg="white").grid(row=3, column=0, padx=20)  # Espacement vertical
 
         Label(frame1, text="Nom:", bg="white").grid(row=4, column=0, padx=20, pady=5, sticky=W)
         self.entry_nom = ttk.Entry(frame1, width=30)
         self.entry_nom.grid(row=4, column=1, pady=5)
-        abelVide=Label(frame1, text="",bg="white").grid(row=5, column=0, padx=20)  # Espacement vertical
+
         Label(frame1, text="Date de naissance:", bg="white").grid(row=6, column=0, padx=20, pady=5, sticky=W)
         self.date_entry = DateEntry(frame1, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
         self.date_entry.grid(row=6, column=1, pady=5)
-        abelVide=Label(frame1, text="",bg="white").grid(row=7, column=0, padx=20)  # Espacement vertical
+
         Label(frame1, text="Sexe:", bg="white").grid(row=8, column=0, padx=20, pady=5, sticky=W)
         self.gender = StringVar()
         frame_gender = Frame(frame1, bg="white")
         frame_gender.grid(row=8, column=1, pady=5)
         ttk.Radiobutton(frame_gender, text="Masculin", variable=self.gender, value="Masculin").pack(side=LEFT, padx=10)
         ttk.Radiobutton(frame_gender, text="Féminin", variable=self.gender, value="Féminin").pack(side=LEFT, padx=10)
-        abelVide=Label(frame1, text="",bg="white").grid(row=9, column=0, padx=20)  # Espacement vertical
+
         Label(frame1, text="Numéro de téléphone:", bg="white").grid(row=10, column=0, padx=20, pady=5, sticky=W)
         self.entry_numeroTel = ttk.Entry(frame1, width=30)
         self.entry_numeroTel.grid(row=10, column=1, pady=5)
-        abelVide=Label(frame1, text="",bg="white").grid(row=11, column=0, padx=20)  # Espacement vertical
+
         Label(frame1, text="Email:", bg="white").grid(row=12, column=0, padx=20, pady=5, sticky=W)
         self.entry_email = ttk.Entry(frame1, width=30)
         self.entry_email.grid(row=12, column=1, pady=5)
@@ -113,18 +296,23 @@ class Formulaire:
             # Vérifier si l'email existe déjà
             mycur.execute("SELECT * FROM utilisateurs WHERE email = %s", (email,))
             if mycur.fetchone():
-                messagebox.showerror("Erreur", "tu as deja inscrit !", parent=self.root)
+                messagebox.showerror("Erreur", "Cet email est déjà utilisé !", parent=self.root)
                 return
-            # Vérifier si le prénom et le nom existent déjà
-            mycur.execute("SELECT * FROM utilisateurs WHERE nom = %s AND prenom = %s", (nom, prenom))
-            if mycur.fetchone():
-                messagebox.showinfo("Succès", "Tu as déjà inscrit !", parent=self.root)
-                return
-            
+
             mycur.execute("INSERT INTO utilisateurs (prenom, nom, date_naissance, sexe, numero_tel, email) VALUES (%s, %s, %s, %s, %s, %s)",
                           (prenom, nom, date_naissance, sexe, numero_tel, email))
             con.commit()
+
+            # Récupérer l'id de l'utilisateur ajouté
+            mycur.execute("SELECT id FROM utilisateurs WHERE email = %s", (email,))
+            utilisateur_id = mycur.fetchone()[0]
+
             con.close()
+
+            # Ouvrir le formulaire médical avec l'ID de l'utilisateur
+            self.root.destroy()  # Fermer la fenêtre d'inscription
+            dossier_window = Toplevel()  # Créer une nouvelle fenêtre
+            formulaire_medicale(dossier_window, utilisateur_id)  # Passer l'ID à DossierMedical
 
             messagebox.showinfo("Succès", "Ajout effectué !", parent=self.root)
 

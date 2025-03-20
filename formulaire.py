@@ -1,41 +1,125 @@
 from tkinter import *
 from tkinter import filedialog, messagebox
-from tkcalendar import DateEntry  
+from tkcalendar import DateEntry 
+import mysql.connector 
+# Connexion à MySQL (à la racine de MySQL sans spécifier de base de données)
+conn = mysql.connector.connect(
+    host="localhost",
+    user="root",  # Changez si nécessaire
+    password=""   # Changez si nécessaire
+)
+cursor = conn.cursor()
+
+# Créer la base de données si elle n'existe pas
+cursor.execute("CREATE DATABASE IF NOT EXISTS medical_db")
+conn.commit()
+
+# Connexion à la base de données spécifique
+conn = mysql.connector.connect(
+    host="localhost",
+    user="root",  # Changez si nécessaire
+    password="",  # Changez si nécessaire
+    database="medical_db"
+)
+cursor = conn.cursor()
+
+# Création de la table si elle n'existe pas
+cursor.execute('''CREATE TABLE IF NOT EXISTS dossiers_medical (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    utilisateur_id INT,  
+    antecedents_familiaux TEXT,
+    antecedents_personnels TEXT,
+    interventions TEXT,
+    vaccinations TEXT,
+    traitements TEXT,
+    date_consultation DATE,
+    motif TEXT,
+    symptomes TEXT,
+    diagnostic TEXT,
+    medecin TEXT,
+    temperature FLOAT,
+    tension TEXT,
+    imc TEXT,
+    analyses TEXT,
+    medicaments TEXT,
+    conseils TEXT,
+    prochain_rdv DATE,
+    consentement TEXT,
+    signature_medecin TEXT,
+    signature_patient TEXT,
+    fichier TEXT,
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
+)''')
+conn.commit()
+
 
 # Fonction pour sélectionner un fichier médical
 def ajouter_fichier():
     fichier_path = filedialog.askopenfilename(title="Sélectionner un fichier médical",
-                                              filetypes=[("Tous les fichiers", "*.*"), 
+                                              filetypes=[("Tous les fichiers", "."), 
                                                          ("PDF", "*.pdf"), 
-                                                         ("Images", "*.jpg;*.png"),
-                                                         ("Documents", "*.docx;*.txt")])
+                                                         ("Images", ".jpg;.png"),
+                                                         ("Documents", ".docx;.txt")])
     if fichier_path:
         fichier_label.config(text=f"Fichier sélectionné: {fichier_path}")
 
-# Fonction pour afficher/masquer les champs en fonction des cases cochées
+# Fonction pour enregistrer les données dans la base
 def afficher_entry(section, index):
     if sections[section]["variables"][index].get():  
         sections[section]["entries"][index].pack(side="left", padx=5)  # Afficher Entry
     else:
         sections[section]["entries"][index].pack_forget()  # Masquer Entry
-
-# Fonction pour récupérer et afficher les données saisies
 def submit():
-    donnees = {}  
-    for section, data in sections.items():
-        donnees[section] = {}
-        for i, var in enumerate(data["variables"]):
-            if var.get():  
-                texte = data["entries"][i].get()
-                donnees[section][data["elements"][i]] = texte  
+    try:
+        data = {section: {} for section in sections.keys()}
+        for section, content in sections.items():
+            for i, var in enumerate(content["variables"]):
+                if var.get():
+                    data[section][content["elements"][i]] = content["entries"][i].get()
 
-    fichier = fichier_label.cget("text").replace("Fichier sélectionné: ", "")
-    
-    if fichier == "":
-        messagebox.showwarning("Avertissement", "Veuillez ajouter un fichier médical avant de soumettre.")
-    else:
-        messagebox.showinfo("Succès", "Les données et le fichier ont été enregistrés avec succès !")
-        print("Fichier enregistré:", fichier)
+        fichier = fichier_label.cget("text").replace("Fichier sélectionné: ", "")
+
+        # Récupérer l'ID de l'utilisateur (en supposant que l'utilisateur a déjà été inscrit)
+        cursor.execute("SELECT id FROM utilisateurs WHERE email = %s", (data["Informations sur la Consultation"].get("Email", ""),))
+        utilisateur_id = cursor.fetchone()[0]  # Récupère l'ID de l'utilisateur
+
+        cursor.execute('''INSERT INTO dossiers_medical (
+            utilisateur_id, antecedents_familiaux, antecedents_personnels, interventions, vaccinations, traitements,
+            date_consultation, motif, symptomes, diagnostic, medecin,
+            temperature, tension, imc, analyses,
+            medicaments, conseils, prochain_rdv,
+            consentement, signature_medecin, signature_patient,
+            fichier
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''',
+        (
+            utilisateur_id,
+            data["Antécédents Médicaux"].get("Antécédents familiaux", ""),
+            data["Antécédents Médicaux"].get("Antécédents personnels", ""),
+            data["Antécédents Médicaux"].get("Interventions chirurgicales passées", ""),
+            data["Antécédents Médicaux"].get("Vaccinations", ""),
+            data["Antécédents Médicaux"].get("Traitements en cours", ""),
+            data["Informations sur la Consultation"].get("Date de la consultation", ""),
+            data["Informations sur la Consultation"].get("Motif de la consultation", ""),
+            data["Informations sur la Consultation"].get("Symptômes", ""),
+            data["Informations sur la Consultation"].get("Diagnostic", ""),
+            data["Informations sur la Consultation"].get("Médecin responsable", ""),
+            data["Tests Médicaux"].get("Température corporelle", ""),
+            data["Tests Médicaux"].get("Tension artérielle", ""),
+            data["Tests Médicaux"].get("Poids et taille (IMC)", ""),
+            data["Tests Médicaux"].get("Résultats d’analyses", ""),
+            data["Traitement & Prescription Médicale"].get("Médicaments prescrits", ""),
+            data["Traitement & Prescription Médicale"].get("Conseils et recommandations médicales", ""),
+            data["Traitement & Prescription Médicale"].get("Prochain rendez-vous", ""),
+            data["Consentements & Signature"].get("Consentement du patient", ""),
+            data["Consentements & Signature"].get("Signature du médecin", ""),
+            data["Consentements & Signature"].get("Signature du patient", ""),
+            fichier
+        ))
+        conn.commit()
+        messagebox.showinfo("Succès", "Les données ont été enregistrées avec succès !")
+    except Exception as e:
+        messagebox.showerror("Erreur", f"Une erreur est survenue : {e}")
+
 
 # Création de la fenêtre principale
 window = Tk()
@@ -127,3 +211,8 @@ submit_btn.pack(pady=20)
 
 window.mainloop()
 
+def fermer_connexion():
+    cursor.close()
+    conn.close()
+
+window.protocol("WM_DELETE_WINDOW", fermer_connexion)

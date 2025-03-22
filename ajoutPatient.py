@@ -216,67 +216,6 @@ def ajouter_patien():
         window.protocol("WM_DELETE_WINDOW", fermer_connexion)
         window.mainloop()
 
-<<<<<<< HEAD
-class Formulaire:
-       def __init__(self, root):
-        self.root = root
-        self.root.title("Formulaire")
-        self.root.geometry("800x600")
-        self.root.configure(bg="#F5F5F5")
-
-        # Connexion MySQL et création de la base/table
-        self.creer_base_et_table()
-
-        # Cadre principal
-        frame1 = Frame(root, bg="white", bd=2, relief=RIDGE)
-        frame1.place(relx=0.5, rely=0.5, anchor=CENTER, width=500, height=550)
-
-        # Titre
-        Label(frame1, text="Formulaire", font=("Times New Roman", 20, "bold"), bg="white", fg="dark blue").grid(row=1, column=1, columnspan=4, pady=15)
-
-        # Champs de formulaire
-        Label(frame1, text="Prénom:", bg="white").grid(row=2, column=0, padx=20, pady=5, sticky=W)
-        self.entry_prenom = ttk.Entry(frame1, width=30)
-        self.entry_prenom.grid(row=2, column=1, pady=5)
-        abelVide=Label(frame1, text="",bg="white").grid(row=3, column=0, padx=20)  # Espacement vertical
-
-        Label(frame1, text="Nom:", bg="white").grid(row=4, column=0, padx=20, pady=5, sticky=W)
-        self.entry_nom = ttk.Entry(frame1, width=30)
-        self.entry_nom.grid(row=4, column=1, pady=5)
-        abelVide=Label(frame1, text="",bg="white").grid(row=5, column=0, padx=20)  # Espacement vertical
-        Label(frame1, text="Date de naissance:", bg="white").grid(row=6, column=0, padx=20, pady=5, sticky=W)
-        self.date_entry = DateEntry(frame1, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
-        self.date_entry.grid(row=6, column=1, pady=5)
-        abelVide=Label(frame1, text="",bg="white").grid(row=7, column=0, padx=20)  # Espacement vertical
-        Label(frame1, text="Sexe:", bg="white").grid(row=8, column=0, padx=20, pady=5, sticky=W)
-        self.gender = StringVar()
-        frame_gender = Frame(frame1, bg="white")
-        frame_gender.grid(row=8, column=1, pady=5)
-        ttk.Radiobutton(frame_gender, text="Masculin", variable=self.gender, value="Masculin").pack(side=LEFT, padx=10)
-        ttk.Radiobutton(frame_gender, text="Féminin", variable=self.gender, value="Féminin").pack(side=LEFT, padx=10)
-        abelVide=Label(frame1, text="",bg="white").grid(row=9, column=0, padx=20)  # Espacement vertical
-        Label(frame1, text="Numéro de téléphone:", bg="white").grid(row=10, column=0, padx=20, pady=5, sticky=W)
-        self.entry_numeroTel = ttk.Entry(frame1, width=30)
-        self.entry_numeroTel.grid(row=10, column=1, pady=5)
-        abelVide=Label(frame1, text="",bg="white").grid(row=11, column=0, padx=20)  # Espacement vertical
-        Label(frame1, text="Email:", bg="white").grid(row=12, column=0, padx=20, pady=5, sticky=W)
-        self.entry_email = ttk.Entry(frame1, width=30)
-        self.entry_email.grid(row=12, column=1, pady=5)
-        self.entry_email.bind("<KeyRelease>", self.verifier_email)
-
-        # Boutons
-        Button(frame1, text="Enregistrer", font=("times new roman", 15), bg="dark blue", fg="white", command=self.enregistrer_donnees).grid(row=14, column=1, pady=20)
-
-    
-       def creer_base_et_table(self):
-        """ Crée la base de données et la table utilisateurs si elles n'existent pas """
-        try:
-            con = mysql.connector.connect(host='localhost', user='root', password='')
-            mycur = con.cursor()
-            mycur.execute("CREATE DATABASE IF NOT EXISTS formulaire")
-            con.commit()
-            con.close()
-=======
     ##########################################################################
     # Classe Formulaire : inscription de l'utilisateur et ouverture du
     # formulaire médical une fois l'enregistrement terminé.
@@ -330,7 +269,6 @@ class Formulaire:
             self.entry_email = ttk.Entry(frame1, width=30)
             self.entry_email.grid(row=12, column=1, pady=5)
             self.entry_email.bind("<KeyRelease>", self.verifier_email)
->>>>>>> 701b769 (ajouter le fichier ajouter patient avec le menu et les deux fanction modifier et supprimer)
 
             # Bouton d'enregistrement
             Button(frame1, text="Enregistrer", font=("Times New Roman", 15), bg="dark blue", fg="white", 
@@ -345,22 +283,6 @@ class Formulaire:
                 con.commit()
                 con.close()
 
-<<<<<<< HEAD
-       def verifier_email(self, event):
-        """ Vérifie si l'email saisi est valide et change la couleur du texte """
-        email = self.entry_email.get()
-        pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-        self.entry_email.config(foreground="black" if re.match(pattern, email) else "red")
-
-       def enregistrer_donnees(self):
-        """ Enregistre les données de l'utilisateur et ouvre le formulaire médical """
-        prenom = self.entry_prenom.get()
-        nom = self.entry_nom.get()
-        date_naissance = self.date_entry.get()
-        sexe = self.gender.get()
-        numero_tel = self.entry_numeroTel.get()
-        email = self.entry_email.get()
-=======
                 con = mysql.connector.connect(host='localhost', user='root', password='', database='formulaire')
                 mycur = con.cursor()
                 mycur.execute("""
@@ -384,7 +306,6 @@ class Formulaire:
             email = self.entry_email.get()
             pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
             self.entry_email.config(foreground="black" if re.match(pattern, email) else "red")
->>>>>>> 701b769 (ajouter le fichier ajouter patient avec le menu et les deux fanction modifier et supprimer)
 
         def enregistrer_donnees(self):
             """ Enregistre les données de l'utilisateur et ouvre le formulaire médical """
@@ -416,17 +337,6 @@ class Formulaire:
                             (prenom, nom, date_naissance, sexe, numero_tel, email))
                 con.commit()
 
-<<<<<<< HEAD
-            # Masquer la fenêtre principale
-            self.root.withdraw()
-
-            # Ouvrir une nouvelle fenêtre pour le formulaire médical
-            dossier_window = Toplevel()
-            formulaire_medicale(dossier_window, utilisateur_id)
-
-            # Message de confirmation
-            messagebox.showinfo("Succès", "Ajout effectué !", parent=dossier_window)
-=======
                 # Récupération de l'id de l'utilisateur inscrit
                 mycur.execute("SELECT id FROM utilisateurs WHERE email = %s", (email,))
                 utilisateur_id = mycur.fetchone()[0]
@@ -510,7 +420,6 @@ def supprimer_container():
 
             conn.commit()
             messagebox.showinfo("Succès", "Utilisateur supprimé avec succès.")
->>>>>>> 701b769 (ajouter le fichier ajouter patient avec le menu et les deux fanction modifier et supprimer)
 
         except mysql.connector.Error as e:
             messagebox.showerror("Erreur", f"Erreur MySQL : {e}")
@@ -519,8 +428,6 @@ def supprimer_container():
                 cursor.close()
                 conn.close()
 
-<<<<<<< HEAD
-=======
     # Bouton stylisé avec hover
     btn_supprimer = ttk.Button(window, text="Supprimer", style="Red.TButton", command=supprimer_utilisateur)
     btn_supprimer.pack(pady=20)
@@ -754,7 +661,6 @@ def main_menu():
     ttk.Button(frame, text="Supprimer un utilisateur", command=supprimer_container).pack(pady=10, fill='x')
     
     root.mainloop()
->>>>>>> 701b769 (ajouter le fichier ajouter patient avec le menu et les deux fanction modifier et supprimer)
 
 # Programme principal
 if __name__ == "__main__":

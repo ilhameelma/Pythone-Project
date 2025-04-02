@@ -243,14 +243,19 @@ def ajouter_patien():
             Label(frame1, text="Prénom:", bg="white").grid(row=2, column=0, padx=20, pady=5, sticky=W)
             self.entry_prenom = ttk.Entry(frame1, width=30)
             self.entry_prenom.grid(row=2, column=1, pady=5)
+            abelVide=Label(frame1, text="",bg="white").grid(row=3, column=0, padx=20)  # Espacement vertical
+
 
             Label(frame1, text="Nom:", bg="white").grid(row=4, column=0, padx=20, pady=5, sticky=W)
             self.entry_nom = ttk.Entry(frame1, width=30)
             self.entry_nom.grid(row=4, column=1, pady=5)
+            abelVide=Label(frame1, text="",bg="white").grid(row=5, column=0, padx=20)  # Espacement vertical
+
 
             Label(frame1, text="Date de naissance:", bg="white").grid(row=6, column=0, padx=20, pady=5, sticky=W)
             self.date_entry = DateEntry(frame1, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
             self.date_entry.grid(row=6, column=1, pady=5)
+            abelVide=Label(frame1, text="",bg="white").grid(row=7, column=0, padx=20)  # Espacement vertical
 
             Label(frame1, text="Sexe:", bg="white").grid(row=8, column=0, padx=20, pady=5, sticky=W)
             self.gender = StringVar()
@@ -260,11 +265,15 @@ def ajouter_patien():
                 .pack(side=LEFT, padx=10)
             ttk.Radiobutton(frame_gender, text="Féminin", variable=self.gender, value="Féminin") \
                 .pack(side=LEFT, padx=10)
+            
 
+            abelVide=Label(frame1, text="",bg="white").grid(row=9, column=0, padx=20)  # Espacement vertical
             Label(frame1, text="Numéro de téléphone:", bg="white").grid(row=10, column=0, padx=20, pady=5, sticky=W)
             self.entry_numeroTel = ttk.Entry(frame1, width=30)
             self.entry_numeroTel.grid(row=10, column=1, pady=5)
+            
 
+            abelVide=Label(frame1, text="",bg="white").grid(row=11, column=0, padx=20)  # Espacement vertical
             Label(frame1, text="Email:", bg="white").grid(row=12, column=0, padx=20, pady=5, sticky=W)
             self.entry_email = ttk.Entry(frame1, width=30)
             self.entry_email.grid(row=12, column=1, pady=5)
@@ -639,29 +648,225 @@ def modifier_container():
     btn_modifier.pack(pady=10)
 
     window.mainloop()
-from tkinter import Tk, Button
+
+  
+
+
+import tkinter as tk
+from tkinter import messagebox
+from tkcalendar import DateEntry
+from datetime import datetime
+import mysql.connector
+from tkinter import Frame, Label, RIDGE, CENTER
+
+def guerison():
+    def get_connection():
+        return mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="",
+            database="formulaire"
+        )
+
+    def formulaire_guerison(utilisateur_id):
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # Récupérer le nom et prénom de l'utilisateur
+        cursor.execute("SELECT nom, prenom FROM utilisateurs WHERE id = %s", (utilisateur_id,))
+        utilisateur = cursor.fetchone()
+        nom = utilisateur[0] if utilisateur else "Inconnu"
+        prenom = utilisateur[1] if utilisateur else "Inconnu"
+
+        # Créer la table guérison si elle n'existe pas
+        cursor.execute('''CREATE TABLE IF NOT EXISTS guerison (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            utilisateur_id INT,
+            date_debut_traitement DATE,
+            date_fin_guerison DATE,
+            etat_sante_actuel TEXT,
+            symptomes_persistants TEXT,
+            traitement_en_cours TEXT,
+            etat_guerison ENUM('Guéri', 'En Cours', 'Non Guéri') NOT NULL,
+            FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
+        )''')
+        conn.commit()
+         # Déclaration de la variable `etat_guerison_var`
+        etat_guerison_var = tk.StringVar()  # Initialisation de la variable liée aux boutons radio
+        def save_data():
+            date_debut_traitement = entry_date_debut.get()
+            date_fin_guerison = entry_date_fin.get()
+            etat_sante_actuel = entry_etat_sante.get()
+            symptomes_persistants = entry_symptomes.get()
+            traitement_en_cours = entry_traitement.get()
+            etat_guerison = etat_guerison_var.get()
+
+            # # Validation : seul le champ "État final de guérison" est obligatoire
+            if not etat_guerison:
+               messagebox.showerror("Erreur", "Le champ 'État final de guérison' doit être rempli !")
+               return
+            try:
+                date_debut = datetime.strptime(date_debut_traitement, "%Y-%m-%d")
+                date_fin = datetime.strptime(date_fin_guerison, "%Y-%m-%d") if date_fin_guerison else None
+                if date_fin and date_fin <= date_debut:
+                    messagebox.showerror("Erreur", "La date de fin doit être postérieure à la date de début.")
+                    return
+            except ValueError:
+                messagebox.showerror("Erreur", "Veuillez entrer des dates valides !")
+                return
+
+            cursor.execute("SELECT * FROM guerison WHERE utilisateur_id = %s", (utilisateur_id,))
+            if cursor.fetchone():
+                cursor.execute('''UPDATE guerison
+                    SET date_debut_traitement = %s, date_fin_guerison = %s, etat_sante_actuel = %s,
+                    symptomes_persistants = %s, traitement_en_cours = %s, etat_guerison = %s
+                    WHERE utilisateur_id = %s''',
+                               (date_debut_traitement, date_fin_guerison, etat_sante_actuel,
+                                symptomes_persistants, traitement_en_cours, etat_guerison, utilisateur_id))
+            else:
+                cursor.execute('''INSERT INTO guerison (
+                    utilisateur_id, date_debut_traitement, date_fin_guerison, etat_sante_actuel,
+                    symptomes_persistants, traitement_en_cours, etat_guerison
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)''',
+                               (utilisateur_id, date_debut_traitement, date_fin_guerison, etat_sante_actuel,
+                                symptomes_persistants, traitement_en_cours, etat_guerison))
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo("Succès", "Les informations de guérison ont été enregistrées avec succès.")
+            window.destroy()
+
+        # Fenêtre Tkinter pour le formulaire
+        window = tk.Tk()
+        window.title("Formulaire de Guérison")
+        window.geometry("500x400")
+
+        # Afficher le nom et prénom dans deux champs séparés
+        tk.Label(window, text="Nom de l'utilisateur", font=("Arial", 12)).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        entry_nom = tk.Entry(window, width=30)
+        entry_nom.insert(0, nom)  # Insérer le nom dans le champ
+        entry_nom.config(state="readonly")  # Rendre le champ en lecture seule
+        entry_nom.grid(row=0, column=1, padx=10, pady=10)
+
+        tk.Label(window, text="Prénom de l'utilisateur", font=("Arial", 12)).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        entry_prenom = tk.Entry(window, width=30)
+        entry_prenom.insert(0, prenom)  # Insérer le prénom dans le champ
+        entry_prenom.config(state="readonly")  # Rendre le champ en lecture seule
+        entry_prenom.grid(row=1, column=1, padx=10, pady=10)
+
+        # Champs essentiels avec `DateEntry`
+        tk.Label(window, text="Date de début du traitement", font=("Arial", 12)).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        entry_date_debut = DateEntry(window, width=30, background="dark blue", foreground="white", date_pattern="yyyy-MM-dd")
+        entry_date_debut.grid(row=2, column=1, padx=10, pady=10)
+
+        tk.Label(window, text="Date de fin de guérison (si applicable)", font=("Arial", 12)).grid(row=3, column=0, padx=10, pady=10, sticky="w")
+        entry_date_fin = DateEntry(window, width=30, background="dark blue", foreground="white", date_pattern="yyyy-MM-dd")
+        entry_date_fin.grid(row=3, column=1, padx=10, pady=10)
+
+        tk.Label(window, text="État de santé actuel", font=("Arial", 12)).grid(row=4, column=0, padx=10, pady=10, sticky="w")
+        entry_etat_sante = tk.Entry(window, width=30)
+        entry_etat_sante.grid(row=4, column=1, padx=10, pady=10)
+
+        tk.Label(window, text="Symptômes persistants", font=("Arial", 12)).grid(row=5, column=0, padx=10, pady=10, sticky="w")
+        entry_symptomes = tk.Entry(window, width=30)
+        entry_symptomes.grid(row=5, column=1, padx=10, pady=10)
+
+        tk.Label(window, text="Traitement en cours", font=("Arial", 12)).grid(row=6, column=0, padx=10, pady=10, sticky="w")
+        entry_traitement = tk.Entry(window, width=30)
+        entry_traitement.grid(row=6, column=1, padx=10, pady=10)
+        tk.Label(window, text="État final de guérison", font=("Arial", 12)).grid(row=7, column=0, padx=10, pady=10, sticky="w")
+        etat_guerison_var = tk.StringVar(value="En Cours")# Initialisation de la variable liée aux boutons radio
+        tk.Radiobutton(window, text="Guéri", variable=etat_guerison_var, value="Guéri").grid(row=7, column=1, sticky="w")
+        tk.Radiobutton(window, text="En Cours", variable=etat_guerison_var, value="En Cours").grid(row=8, column=1, sticky="w")
+        tk.Radiobutton(window, text="Non Guéri", variable=etat_guerison_var, value="Non Guéri").grid(row=9, column=1, sticky="w")
+
+        # Bouton de sauvegarde
+        tk.Button(window, text="Enregistrer", command=save_data, bg="green", fg="white", font=("Arial", 12, "bold")).grid(row=10, column=0, columnspan=2, pady=20)
+
+        window.mainloop()
+
+    # Fenêtre principale pour saisir l'ID utilisateur
+    main_window = tk.Tk()
+    main_window.title("Vérification de l'ID utilisateur")
+    main_window.geometry("400x150")
+    main_window.config(bg="#F5F5F5")
+
+    # Cadre principal pour afficher le formulaire
+    frame3 = Frame(main_window, bg="white", bd=2, relief=RIDGE)
+    frame3.place(relx=0.5, rely=0.5, anchor=CENTER, width=500, height=200)
+
+    # Espacement vertical dans le cadre
+    for i in range(3):
+        Label(frame3, text="", bg="white").grid(row=i, column=0, padx=20)
+
+    tk.Label(frame3, text="Entrez votre ID utilisateur :", font=("Arial", 12)).grid(row=3, column=1, padx=10, pady=10)
+    entry_id_utilisateur = tk.Entry(frame3, width=30)
+    entry_id_utilisateur.grid(row=3, column=2, padx=10, pady=10)
+
+    def verifier_id():
+        utilisateur_id = entry_id_utilisateur.get()
+
+        if not utilisateur_id.isdigit():
+            messagebox.showerror("Erreur", "L'ID utilisateur doit être un nombre.")
+            return
+
+        utilisateur_id = int(utilisateur_id)
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM utilisateurs WHERE id = %s", (utilisateur_id,))
+        if cursor.fetchone():
+            main_window.destroy()
+            formulaire_guerison(utilisateur_id)
+        else:
+            messagebox.showerror("Erreur", "ID utilisateur incorrect.")
+
+    tk.Button(frame3, text="Vérifier", command=verifier_id, bg="blue", fg="white", font=("Arial", 12, "bold")).grid(row=5, column=1, columnspan=2, pady=10)
+
+    main_window.mainloop()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from tkinter import Tk, Label
 from tkinter import ttk
+
+def menu_personnes_inscrites():
+
+
+    window = Tk()
+    window.title("Menu pour les Personnes Inscrites")
+    window.geometry("400x300")
+    Label(window, text="Menu des Personnes déjà Inscrites", font=("Arial", 14, "bold"), fg="blue").pack(pady=20)
+
+    ttk.Button(window, text="Modifier", command=modifier_container).pack(pady=10, fill="x")
+    ttk.Button(window, text="Guérison", command=guerison).pack(pady=10, fill="x")
+    window.mainloop()
+
+
 
 def main_menu():
     root = Tk()
     root.title("Menu Principal")
-    root.geometry("600x600")
-    root.configure(bg="#f0f0f0")  # Couleur de fond
-    label_bienvenue = Label(root, text="Bienvenue dans notre application de gestion des maladies", 
-                            font=("Arial", 14, "bold"), fg="blue", bg="#f0f0f0")
-    label_bienvenue.pack(pady=10)
-    style = ttk.Style()
-    style.configure("TButton", font=("Arial", 12), padding=10)
-    
-    frame = ttk.Frame(root, padding=20)
-    frame.pack(expand=True)
-    
-    ttk.Button(frame, text="Ajouter un patient", command=ajouter_patien).pack(pady=10, fill='x')
-    ttk.Button(frame, text="Modifier les informations", command=modifier_container).pack(pady=10, fill='x')
-    ttk.Button(frame, text="Supprimer un utilisateur", command=supprimer_container).pack(pady=10, fill='x')
-    
+    root.geometry("400x300")
+    Label(root, text="Menu Principal", font=("Arial", 16, "bold"), fg="blue").pack(pady=20)
+
+    ttk.Button(root, text="Personnes déjà inscrites", command=menu_personnes_inscrites).pack(pady=10, fill="x")
+    ttk.Button(root, text="Nouvelle Inscription", command=ajouter_patien).pack(pady=10, fill="x")
+
     root.mainloop()
 
 # Programme principal
 if __name__ == "__main__":
     main_menu()
+

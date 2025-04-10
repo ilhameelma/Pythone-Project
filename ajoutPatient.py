@@ -651,13 +651,12 @@ def modifier_container():
 
   
 
-
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from tkcalendar import DateEntry
 from datetime import datetime
 import mysql.connector
-from tkinter import Frame, Label, RIDGE, CENTER
+from tkinter import Frame, Label, RIDGE, CENTER, LEFT, StringVar
 
 def guerison():
     def get_connection():
@@ -671,14 +670,11 @@ def guerison():
     def formulaire_guerison(utilisateur_id):
         conn = get_connection()
         cursor = conn.cursor()
-
-        # Récupérer le nom et prénom de l'utilisateur
         cursor.execute("SELECT nom, prenom FROM utilisateurs WHERE id = %s", (utilisateur_id,))
         utilisateur = cursor.fetchone()
         nom = utilisateur[0] if utilisateur else "Inconnu"
         prenom = utilisateur[1] if utilisateur else "Inconnu"
 
-        # Créer la table guérison si elle n'existe pas
         cursor.execute('''CREATE TABLE IF NOT EXISTS guerison (
             id INT AUTO_INCREMENT PRIMARY KEY,
             utilisateur_id INT,
@@ -691,8 +687,7 @@ def guerison():
             FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
         )''')
         conn.commit()
-         # Déclaration de la variable `etat_guerison_var`
-        etat_guerison_var = tk.StringVar()  # Initialisation de la variable liée aux boutons radio
+
         def save_data():
             date_debut_traitement = entry_date_debut.get()
             date_fin_guerison = entry_date_fin.get()
@@ -701,10 +696,9 @@ def guerison():
             traitement_en_cours = entry_traitement.get()
             etat_guerison = etat_guerison_var.get()
 
-            # # Validation : seul le champ "État final de guérison" est obligatoire
             if not etat_guerison:
-               messagebox.showerror("Erreur", "Le champ 'État final de guérison' doit être rempli !")
-               return
+                messagebox.showerror("Erreur", "Le champ 'État final de guérison' doit être rempli !")
+                return
             try:
                 date_debut = datetime.strptime(date_debut_traitement, "%Y-%m-%d")
                 date_fin = datetime.strptime(date_fin_guerison, "%Y-%m-%d") if date_fin_guerison else None
@@ -736,82 +730,83 @@ def guerison():
             messagebox.showinfo("Succès", "Les informations de guérison ont été enregistrées avec succès.")
             window.destroy()
 
-        # Fenêtre Tkinter pour le formulaire
+        # Interface stylée
         window = tk.Tk()
         window.title("Formulaire de Guérison")
-        window.geometry("500x400")
+        window.geometry("800x600")
+        window.configure(bg="#F5F5F5")
 
-        # Afficher le nom et prénom dans deux champs séparés
-        tk.Label(window, text="Nom de l'utilisateur", font=("Arial", 12)).grid(row=0, column=0, padx=10, pady=10, sticky="w")
-        entry_nom = tk.Entry(window, width=30)
-        entry_nom.insert(0, nom)  # Insérer le nom dans le champ
-        entry_nom.config(state="readonly")  # Rendre le champ en lecture seule
-        entry_nom.grid(row=0, column=1, padx=10, pady=10)
+        frame = Frame(window, bg="white", bd=2, relief=RIDGE)
+        frame.place(relx=0.5, rely=0.5, anchor=CENTER, width=550, height=550)
 
-        tk.Label(window, text="Prénom de l'utilisateur", font=("Arial", 12)).grid(row=1, column=0, padx=10, pady=10, sticky="w")
-        entry_prenom = tk.Entry(window, width=30)
-        entry_prenom.insert(0, prenom)  # Insérer le prénom dans le champ
-        entry_prenom.config(state="readonly")  # Rendre le champ en lecture seule
-        entry_prenom.grid(row=1, column=1, padx=10, pady=10)
+        Label(frame, text="Formulaire de Guérison", font=("Times New Roman", 20, "bold"), bg="white", fg="dark blue").grid(row=0, column=0, columnspan=2, pady=20)
 
-        # Champs essentiels avec `DateEntry`
-        tk.Label(window, text="Date de début du traitement", font=("Arial", 12)).grid(row=2, column=0, padx=10, pady=10, sticky="w")
-        entry_date_debut = DateEntry(window, width=30, background="dark blue", foreground="white", date_pattern="yyyy-MM-dd")
-        entry_date_debut.grid(row=2, column=1, padx=10, pady=10)
+        Label(frame, text="Nom:", bg="white").grid(row=1, column=0, padx=20, pady=5, sticky="w")
+        entry_nom = ttk.Entry(frame, width=30)
+        entry_nom.insert(0, nom)
+        entry_nom.config(state="readonly")
+        entry_nom.grid(row=1, column=1, pady=5)
+          
+        abelVide=Label(frame, text="",bg="white").grid(row=2, column=0, padx=20)  # Espacement vertical
+        Label(frame, text="Prénom:", bg="white").grid(row=3, column=0, padx=20, pady=5, sticky="w")
+        entry_prenom = ttk.Entry(frame, width=30)
+        entry_prenom.insert(0, prenom)
+        entry_prenom.config(state="readonly")
+        entry_prenom.grid(row=3, column=1, pady=5)
+        abelVide=Label(frame, text="",bg="white").grid(row=4, column=0, padx=20)  # Espacement vertical
+        Label(frame, text="Date début traitement:", bg="white").grid(row=5, column=0, padx=20, pady=5, sticky="w")
+        entry_date_debut = DateEntry(frame, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
+        entry_date_debut.grid(row=5, column=1, pady=5)
+        abelVide=Label(frame, text="",bg="white").grid(row=6, column=0, padx=20)  # Espacement vertical
+        Label(frame, text="Date fin guérison:", bg="white").grid(row=7, column=0, padx=20, pady=5, sticky="w")
+        entry_date_fin = DateEntry(frame, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
+        entry_date_fin.grid(row=7, column=1, pady=5)
+        abelVide=Label(frame, text="",bg="white").grid(row=8, column=0, padx=20)  # Espacement vertical
+        Label(frame, text="État de santé actuel:", bg="white").grid(row=9, column=0, padx=20, pady=5, sticky="w")
+        entry_etat_sante = ttk.Entry(frame, width=30)
+        entry_etat_sante.grid(row=9, column=1, pady=5)
+        abelVide=Label(frame, text="",bg="white").grid(row=10, column=0, padx=20)  # Espacement vertical
+        Label(frame, text="Symptômes persistants:", bg="white").grid(row=11, column=0, padx=20, pady=5, sticky="w")
+        entry_symptomes = ttk.Entry(frame, width=30)
+        entry_symptomes.grid(row=11, column=1, pady=5)
+        abelVide=Label(frame, text="",bg="white").grid(row=12, column=0, padx=20)  # Espacement vertical
+        Label(frame, text="Traitement en cours:", bg="white").grid(row=13, column=0, padx=20, pady=5, sticky="w")
+        entry_traitement = ttk.Entry(frame, width=30)
+        entry_traitement.grid(row=13, column=1, pady=5)
+        abelVide=Label(frame, text="",bg="white").grid(row=14, column=0, padx=20)  # Espacement vertical
+        Label(frame, text="État final de guérison:", bg="white").grid(row=15, column=0, padx=20, pady=5, sticky="w")
+        etat_guerison_var = StringVar(value="En Cours")
+        frame_radio = Frame(frame, bg="white")
+        frame_radio.grid(row=15, column=1, pady=5, sticky="w")
+        ttk.Radiobutton(frame_radio, text="Guéri", variable=etat_guerison_var, value="Guéri").pack(side=LEFT, padx=5)
+        ttk.Radiobutton(frame_radio, text="En Cours", variable=etat_guerison_var, value="En Cours").pack(side=LEFT, padx=5)
+        ttk.Radiobutton(frame_radio, text="Non Guéri", variable=etat_guerison_var, value="Non Guéri").pack(side=LEFT, padx=5)
 
-        tk.Label(window, text="Date de fin de guérison (si applicable)", font=("Arial", 12)).grid(row=3, column=0, padx=10, pady=10, sticky="w")
-        entry_date_fin = DateEntry(window, width=30, background="dark blue", foreground="white", date_pattern="yyyy-MM-dd")
-        entry_date_fin.grid(row=3, column=1, padx=10, pady=10)
-
-        tk.Label(window, text="État de santé actuel", font=("Arial", 12)).grid(row=4, column=0, padx=10, pady=10, sticky="w")
-        entry_etat_sante = tk.Entry(window, width=30)
-        entry_etat_sante.grid(row=4, column=1, padx=10, pady=10)
-
-        tk.Label(window, text="Symptômes persistants", font=("Arial", 12)).grid(row=5, column=0, padx=10, pady=10, sticky="w")
-        entry_symptomes = tk.Entry(window, width=30)
-        entry_symptomes.grid(row=5, column=1, padx=10, pady=10)
-
-        tk.Label(window, text="Traitement en cours", font=("Arial", 12)).grid(row=6, column=0, padx=10, pady=10, sticky="w")
-        entry_traitement = tk.Entry(window, width=30)
-        entry_traitement.grid(row=6, column=1, padx=10, pady=10)
-        tk.Label(window, text="État final de guérison", font=("Arial", 12)).grid(row=7, column=0, padx=10, pady=10, sticky="w")
-        etat_guerison_var = tk.StringVar(value="En Cours")# Initialisation de la variable liée aux boutons radio
-        tk.Radiobutton(window, text="Guéri", variable=etat_guerison_var, value="Guéri").grid(row=7, column=1, sticky="w")
-        tk.Radiobutton(window, text="En Cours", variable=etat_guerison_var, value="En Cours").grid(row=8, column=1, sticky="w")
-        tk.Radiobutton(window, text="Non Guéri", variable=etat_guerison_var, value="Non Guéri").grid(row=9, column=1, sticky="w")
-
-        # Bouton de sauvegarde
-        tk.Button(window, text="Enregistrer", command=save_data, bg="green", fg="white", font=("Arial", 12, "bold")).grid(row=10, column=0, columnspan=2, pady=20)
+        tk.Button(frame, text="Enregistrer", font=("Times New Roman", 15), bg="dark blue", fg="white",
+                  command=save_data).grid(row=16, column=1, columnspan=2, pady=20)
 
         window.mainloop()
 
-    # Fenêtre principale pour saisir l'ID utilisateur
+    # Fenêtre ID utilisateur
     main_window = tk.Tk()
-    main_window.title("Vérification de l'ID utilisateur")
-    main_window.geometry("400x150")
+    main_window.title("Vérification ID utilisateur")
+    main_window.geometry("500x200")
     main_window.config(bg="#F5F5F5")
 
-    # Cadre principal pour afficher le formulaire
-    frame3 = Frame(main_window, bg="white", bd=2, relief=RIDGE)
-    frame3.place(relx=0.5, rely=0.5, anchor=CENTER, width=500, height=200)
+    frame_id = Frame(main_window, bg="white", bd=2, relief=RIDGE)
+    frame_id.place(relx=0.5, rely=0.5, anchor=CENTER, width=400, height=150)
 
-    # Espacement vertical dans le cadre
-    for i in range(3):
-        Label(frame3, text="", bg="white").grid(row=i, column=0, padx=20)
-
-    tk.Label(frame3, text="Entrez votre ID utilisateur :", font=("Arial", 12)).grid(row=3, column=1, padx=10, pady=10)
-    entry_id_utilisateur = tk.Entry(frame3, width=30)
-    entry_id_utilisateur.grid(row=3, column=2, padx=10, pady=10)
+    Label(frame_id, text="Entrez votre ID utilisateur:", font=("Arial", 12), bg="white").grid(row=0, column=0, padx=10, pady=20)
+    entry_id_utilisateur = ttk.Entry(frame_id, width=30)
+    entry_id_utilisateur.grid(row=0, column=1, padx=10, pady=20)
 
     def verifier_id():
         utilisateur_id = entry_id_utilisateur.get()
-
         if not utilisateur_id.isdigit():
             messagebox.showerror("Erreur", "L'ID utilisateur doit être un nombre.")
             return
 
         utilisateur_id = int(utilisateur_id)
-
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM utilisateurs WHERE id = %s", (utilisateur_id,))
@@ -821,7 +816,8 @@ def guerison():
         else:
             messagebox.showerror("Erreur", "ID utilisateur incorrect.")
 
-    tk.Button(frame3, text="Vérifier", command=verifier_id, bg="blue", fg="white", font=("Arial", 12, "bold")).grid(row=5, column=1, columnspan=2, pady=10)
+    tk.Button(frame_id, text="Vérifier", bg="blue", fg="white", font=("Arial", 12, "bold"),
+              command=verifier_id).grid(row=1, column=0, columnspan=2, pady=10)
 
     main_window.mainloop()
 
@@ -838,27 +834,50 @@ def guerison():
 
 
 
-from tkinter import Tk, Label
+
+from tkinter import Tk, Label, Canvas, Toplevel
 from tkinter import ttk
+from PIL import Image, ImageTk  # Pour gérer les images
 
 def menu_personnes_inscrites():
+    # Création de la fenêtre secondaire avec Toplevel pour éviter les conflits avec Tk()
+    window = Toplevel()
+    window.title("Menu Utilisateur")
+    window.geometry("800x700")
+    window.resizable(False, False)  # Empêcher le redimensionnement
 
+    # Charger et ajuster l'image de fond
+    image_fond = Image.open("C:\\Users\\hp\\Downloads\\medical.png")
+    image_fond = image_fond.resize((800, 700), Image.LANCZOS)
+    bg_image = ImageTk.PhotoImage(image_fond)
 
-    window = Tk()
-    window.title("Menu pour les Personnes Inscrites")
-    window.geometry("400x300")
-    Label(window, text="Menu des Personnes déjà Inscrites", font=("Arial", 14, "bold"), fg="blue").pack(pady=20)
+    # Canvas pour afficher l'image sur toute la fenêtre
+    canvas = Canvas(window, width=800, height=700)
+    canvas.place(x=0, y=0)
+    canvas.create_image(0, 0, anchor="nw", image=bg_image)  # Fond total
 
-    ttk.Button(window, text="Modifier", command=modifier_container).pack(pady=10, fill="x")
-    ttk.Button(window, text="Guérison", command=guerison).pack(pady=10, fill="x")
-    window.mainloop()
+    # Stocker l'image pour éviter sa suppression
+    window.bg_image = bg_image  
 
+    # Création du titre
+    label_titre = Label(window, text="Bienvenue", font=("Times New Roman", 24, "bold"), fg="white", bg="black")
+    label_titre.place(relx=0.5, rely=0.2, anchor="center")
 
+    # Boutons centrés
+    style = ttk.Style()
+    style.configure("TButton", font=("Arial", 14, "bold"), padding=10, background="white")
+
+    btn_modifier = ttk.Button(window, text="Modifier vos informations", style="TButton", command=modifier_container)
+    btn_modifier.place(relx=0.5, rely=0.4, anchor="center", width=500)
+
+    btn_guerison = ttk.Button(window, text="Remplir le formulaire de guérison", style="TButton", command=guerison)
+    btn_guerison.place(relx=0.5, rely=0.5, anchor="center", width=500)
 
 def main_menu():
     root = Tk()
     root.title("Menu Principal")
     root.geometry("400x300")
+
     Label(root, text="Menu Principal", font=("Arial", 16, "bold"), fg="blue").pack(pady=20)
 
     ttk.Button(root, text="Personnes déjà inscrites", command=menu_personnes_inscrites).pack(pady=10, fill="x")
@@ -869,4 +888,5 @@ def main_menu():
 # Programme principal
 if __name__ == "__main__":
     main_menu()
+
 

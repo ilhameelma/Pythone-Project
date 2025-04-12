@@ -2,6 +2,63 @@ from tkinter import *
 from tkinter import filedialog, messagebox
 from tkcalendar import DateEntry 
 import mysql.connector 
+from tkinter import *
+from tkinter import ttk, messagebox
+from tkcalendar import DateEntry
+import mysql.connector
+import re
+from tkinter import filedialog
+def supprimer_container:
+    window = Tk()
+    window.title("Suppression Utilisateur")
+
+    # Label et champ de saisie
+    label_supprimer = Label(window, text="Donner l'ID de l'utilisateur à supprimer :")
+    label_supprimer.pack()
+    entry_supprimer = Entry(window)
+    entry_supprimer.pack()
+
+    # Fonction pour la connexion à la base de données
+    def get_connection():
+        return mysql.connector.connect(
+            host="localhost",
+            user="root",  # Modifier si nécessaire
+            password="",  # Modifier si nécessaire
+            database="formulaire"
+        )
+
+    # Fonction pour supprimer un utilisateur et son dossier médical
+    def supprimer_utilisateur():
+        user_id = entry_supprimer.get().strip()
+
+        if not user_id.isdigit():
+            messagebox.showerror("Erreur", "L'ID doit être un nombre valide.")
+            return
+
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            # Suppression dans les tables avec contrainte d'intégrité
+            cursor.execute("DELETE FROM dossiers_medical WHERE utilisateur_id = %s", (user_id,))
+            cursor.execute("DELETE FROM utilisateurs WHERE id = %s", (user_id,))
+
+            conn.commit()
+            messagebox.showinfo("Succès", "Utilisateur supprimé avec succès.")
+
+        except mysql.connector.Error as e:
+            messagebox.showerror("Erreur", f"Erreur MySQL : {e}")
+        finally:
+            if conn.is_connected():
+                cursor.close()
+                conn.close()
+
+    # Bouton de suppression
+    btn_supprimer = Button(window, text="Supprimer", command=supprimer_utilisateur)
+    btn_supprimer.pack()
+
+    # Lancer l'application
+    window.mainloop()
 # Connexion à MySQL (à la racine de MySQL sans spécifier de base de données)
 conn = mysql.connector.connect(
     host="localhost",

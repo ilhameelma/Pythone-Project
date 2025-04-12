@@ -35,9 +35,10 @@ def ajouter_patien():
         cursor = conn.cursor()
 
         # Création de la table dossiers_medical si elle n'existe pas
-        cursor.execute('''CREATE TABLE IF NOT EXISTS dossiers_medical (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            utilisateur_id INT,
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS dossiers_medical (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            utilisateur_id BIGINT UNSIGNED,
             antecedents_familiaux TEXT,
             antecedents_personnels TEXT,
             interventions TEXT,
@@ -60,7 +61,9 @@ def ajouter_patien():
             signature_patient TEXT,
             fichier TEXT,
             FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
-        )''')
+        ) AUTO_INCREMENT = 10000000
+        ''')
+
         conn.commit()
 
         def ajouter_fichier():
@@ -296,15 +299,16 @@ def ajouter_patien():
                 mycur = con.cursor()
                 mycur.execute("""
                     CREATE TABLE IF NOT EXISTS utilisateurs (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                         prenom VARCHAR(50),
                         nom VARCHAR(50),
                         date_naissance DATE,
                         sexe ENUM('Masculin', 'Féminin'),
                         numero_tel VARCHAR(20),
                         email VARCHAR(100) UNIQUE
-                    )
+                    ) AUTO_INCREMENT = 10000000
                 """)
+
                 con.commit()
                 con.close()
             except mysql.connector.Error as e:
@@ -354,9 +358,18 @@ def ajouter_patien():
                 # Fermer la fenêtre d'inscription et ouvrir le formulaire médical
                 self.root.destroy()
                 dossier_window = Toplevel()
+                messagebox.showinfo("Succès", f"Utilisateur créé avec l'ID : {utilisateur_id}")
                 formulaire_medicale(dossier_window, utilisateur_id)
+            
+                
 
                 messagebox.showinfo("Succès", "Ajout effectué !", parent=self.root)
+                if not self.root.winfo_ismapped():  # Vérifie si la fenêtre est cachée
+                    self.root.deiconify()  # La rendre visible
+
+    # Afficher le message avec le parent étant la fenêtre principale
+                messagebox.showinfo("Succès", f"Ajout effectué pour l'utilisateur ID = {utilisateur_id}", parent=self.root)
+                
 
             except mysql.connector.Error as e:
                 messagebox.showerror("Erreur", f"Erreur de connexion : {e}", parent=self.root)
@@ -366,8 +379,12 @@ def ajouter_patien():
     ##########################################################################
 
     if __name__ == "__main__":
+        from tkinter import messagebox
         root = Tk()
         app = Formulaire(root)
+        utilisateur_id = cursor.lastrowid
+
+        messagebox.showinfo("Succès", f"Utilisateur créé avec l'ID : {utilisateur_id}")
         root.mainloop()
         
         
@@ -394,7 +411,7 @@ def supprimer_container():
     style.configure("Hover.TButton", background="#A71D2A", foreground="white", font=("Arial", 12, "bold"))
 
     # Label stylisé
-    label_supprimer = Label(window, text="Donner l'ID de l'utilisateur à supprimer :", fg="#007BFF", font=("Arial", 10, "bold"))
+    label_supprimer = Label(window, text="Donner lci code identification à supprimer :", fg="#007BFF", font=("Arial", 10, "bold"))
     label_supprimer.pack(pady=10)
 
     # Champ de saisie
@@ -416,7 +433,7 @@ def supprimer_container():
         user_id = entry_supprimer.get().strip()
 
         if not user_id.isdigit():
-            messagebox.showerror("Erreur", "L'ID doit être un nombre valide.")
+            messagebox.showerror("Erreur", "ci code identification doit être un nombre valide.")
             return
 
         try:
@@ -575,7 +592,7 @@ def modifier_container():
     style.configure("TButton", font=("Arial", 12), padding=5)
     style.configure("TEntry", padding=5)
     # Ajouter les champs du formulaire
-    create_label("ID de l'utilisateur à modifier :").pack()
+    create_label("ci code identification :").pack()
     entry_modifier = ttk.Entry(form_frame)
     entry_modifier.pack(pady=5)
 
@@ -855,18 +872,51 @@ def menu_personnes_inscrites():
 
 
 
+from tkinter import *
+from tkinter import ttk
+from PIL import Image, ImageTk
+
 def main_menu():
     root = Tk()
     root.title("Menu Principal")
-    root.geometry("400x300")
-    Label(root, text="Menu Principal", font=("Arial", 16, "bold"), fg="blue").pack(pady=20)
+    root.geometry("550x400")
 
-    ttk.Button(root, text="Personnes déjà inscrites", command=menu_personnes_inscrites).pack(pady=10, fill="x")
-    ttk.Button(root, text="Nouvelle Inscription", command=ajouter_patien).pack(pady=10, fill="x")
+    # Charger l'image de fond
+    image = Image.open("image.png")  # Remplace par le chemin de ton image
+    label_bien = Label(root, text="Bienvenue sur notre application de gestion du personnel", 
+                   font=("Helvetica", 14, "bold"), fg="#333")
+    label_bien.pack() # aligné à droite de l'imag
+
+    # Fonction pour redimensionner l'image lorsque la taille de la fenêtre change
+    def resize_image(event):
+        new_width = event.width
+        new_height = event.height
+        resized_image = image.resize((new_width, new_height))
+        photo = ImageTk.PhotoImage(resized_image)
+        
+        # Mettre à jour l'image de fond
+        canvas.create_image(0, 0, image=photo, anchor="nw")
+        canvas.image = photo  # Conserver une référence à l'image pour éviter qu'elle ne soit détruite
+
+    # Créer un Canvas et y ajouter l'image
+    canvas = Canvas(root, width=400, height=300)
+    canvas.pack(fill="both", expand=True)
+    
+    # Initialiser l'image de fond
+    photo = ImageTk.PhotoImage(image.resize((600, 500)))  # Taille initiale
+    canvas.create_image(0, 0, image=photo, anchor="nw")
+    canvas.image = photo  # Conserver une référence à l'image
+
+    # Lier l'événement de redimensionnement de la fenêtre
+    root.bind("<Configure>", resize_image)
+
+    # Ajouter du texte et des boutons
+    
+    tk.Button(root, text="Se connecter", command=menu_personnes_inscrites,width=25, height=2).place(x=195, y=185, anchor="center")
+    tk.Button(root, text="Créer un compte", command=ajouter_patien ,width=25, height=2).place(x=195, y=240, anchor="center")
 
     root.mainloop()
 
 # Programme principal
 if __name__ == "__main__":
     main_menu()
-

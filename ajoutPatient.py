@@ -356,9 +356,10 @@ def ajouter_patien():
                 con.close()
 
                 # Fermer la fenêtre d'inscription et ouvrir le formulaire médical
-                self.root.destroy()
+                
                 dossier_window = Toplevel()
-                messagebox.showinfo("Succès", f"Ajout effectué pour CI code d'identification utilisateur: = {utilisateur_id}", parent=self.root)
+                messagebox.showinfo("Succès", f"Ajout effectué pour CI code d'identification de l' utilisateur: = {utilisateur_id}", parent=self.root)
+                self.root.destroy()
                 formulaire_medicale(dossier_window, utilisateur_id)
             
                 
@@ -368,7 +369,7 @@ def ajouter_patien():
                     self.root.deiconify()  # La rendre visible
 
     # Afficher le message avec le parent étant la fenêtre principale
-                messagebox.showinfo("Succès", f"Ajout effectué pour CI code d'identification utilisateur: = {utilisateur_id}", parent=self.root)
+                messagebox.showinfo("Succès", f"Ajout effectué pour CI code d'identification de l'utilisateur: = {utilisateur_id}", parent=self.root)
                 
 
             except mysql.connector.Error as e:
@@ -384,7 +385,9 @@ def ajouter_patien():
         app = Formulaire(root)
         utilisateur_id = cursor.lastrowid
 
-        messagebox.showinfo("Succès", f" CI code d'identification utilisateur: : {utilisateur_id}")
+        if self.root.winfo_exists():
+            messagebox.showinfo("Succès", f"Ajout effectué pour CI code d'identification de l'utilisateur: = {utilisateur_id}", parent=self.root)
+
         root.mainloop()
         
         
@@ -411,7 +414,7 @@ def supprimer_container():
     style.configure("Hover.TButton", background="#A71D2A", foreground="white", font=("Arial", 12, "bold"))
 
     # Label stylisé
-    label_supprimer = Label(window, text="Donner lci code identification à supprimer :", fg="#007BFF", font=("Arial", 10, "bold"))
+    label_supprimer = Label(window, text="Donner le ci code identification à supprimer :", fg="#007BFF", font=("Arial", 10, "bold"))
     label_supprimer.pack(pady=10)
 
     # Champ de saisie
@@ -884,11 +887,15 @@ def menu_personnes_inscrites():
     style = ttk.Style()
     style.configure("TButton", font=("Arial", 14, "bold"), padding=10, background="white")
 
-    btn_modifier = ttk.Button(window, text="Modifier vos informations", style="TButton", command=modifier_container)
+    btn_modifier = ttk.Button(window, text="Modifier les  informations", style="TButton", command=modifier_container)
     btn_modifier.place(relx=0.5, rely=0.4, anchor="center", width=500)
+    
+    btn_suprimer = ttk.Button(window, text="supprimer personne", style="TButton", command=supprimer_container)
+    btn_suprimer.place(relx=0.5, rely=0.5, anchor="center", width=500)
 
     btn_guerison = ttk.Button(window, text="Remplir le formulaire de guérison", style="TButton", command=guerison)
-    btn_guerison.place(relx=0.5, rely=0.5, anchor="center", width=500)
+    btn_guerison.place(relx=0.5, rely=0.6, anchor="center", width=500)
+    
 
 from tkinter import *
 from tkinter import ttk
@@ -897,49 +904,59 @@ from PIL import Image, ImageTk
 def main_menu():
     root = Tk()
     root.title("Menu Principal")
-    root.geometry("550x400")
-    
-
-    Label(root, text="Menu Principal", font=("Arial", 16, "bold"), fg="blue").pack(pady=20)
+    root.geometry("800x700")
+    root.resizable(False, False)
 
     # Charger l'image de fond
-    image = Image.open("image.png")  # Remplace par le chemin de ton image
-    label_bien = Label(root, text="Bienvenue sur notre application de gestion du personnel", 
-                   font=("Helvetica", 14, "bold"), fg="#333")
-    label_bien.pack() # aligné à droite de l'imag
+    image = Image.open("image.png")
 
-    # Fonction pour redimensionner l'image lorsque la taille de la fenêtre change
+    # Créer un Canvas et y ajouter l'image
+    canvas = Canvas(root, width=800, height=700)
+    canvas.pack(fill="both", expand=True)
+
+    # Initialiser l'image de fond
+    photo = ImageTk.PhotoImage(image.resize((800, 700)))
+    canvas.create_image(0, 0, image=photo, anchor="nw")
+    canvas.image = photo  # garder une référence
+
+    # Créer les éléments à afficher sur l'image de fond
+    label_titre = Label(root, text="Menu Principal", font=("Arial", 16, "bold"), fg="blue", bg="white")
+    label_bien = Label(root, text="Bienvenue sur notre application de gestion du personnel",
+                    font=("Helvetica", 14, "bold"), fg="#333", bg="white")
+
+    style = ttk.Style()
+    style.configure("TButton", font=("Arial", 14, "bold"), padding=10, background="white")
+
+    btn_ajouter = ttk.Button(root, text="s'inscrire", style="TButton", command=ajouter_patien)
+    btn_ajouter.place(relx=0.5, rely=0.4, anchor="center", width=500)
+
+    btn_connecter = ttk.Button(root, text="se connester", style="TButton", command=menu_personnes_inscrites)
+    btn_connecter.place(relx=0.5, rely=0.5, anchor="center", width=500)
+
+    # Ajouter les éléments dans le Canvas pour qu’ils apparaissent par-dessus l’image
+   
+
+    # Redimensionnement dynamique de l’image
     def resize_image(event):
         new_width = event.width
         new_height = event.height
-        resized_image = image.resize((new_width, new_height))
-        photo = ImageTk.PhotoImage(resized_image)
-        
-        # Mettre à jour l'image de fond
-        canvas.create_image(0, 0, image=photo, anchor="nw")
-        canvas.image = photo  # Conserver une référence à l'image pour éviter qu'elle ne soit détruite
+        resized = image.resize((new_width, new_height))
+        new_photo = ImageTk.PhotoImage(resized)
+        canvas.create_image(0, 0, image=new_photo, anchor="nw")
+        canvas.image = new_photo
 
-    # Créer un Canvas et y ajouter l'image
-    canvas = Canvas(root, width=400, height=300)
-    canvas.pack(fill="both", expand=True)
-    
-    # Initialiser l'image de fond
-    photo = ImageTk.PhotoImage(image.resize((600, 500)))  # Taille initiale
-    canvas.create_image(0, 0, image=photo, anchor="nw")
-    canvas.image = photo  # Conserver une référence à l'image
-
-    # Lier l'événement de redimensionnement de la fenêtre
     root.bind("<Configure>", resize_image)
-
-    # Ajouter du texte et des boutons
-    
-    tk.Button(root, text="Se connecter", command=menu_personnes_inscrites,width=25, height=2).place(x=195, y=185, anchor="center")
-    tk.Button(root, text="Créer un compte", command=ajouter_patien ,width=25, height=2).place(x=195, y=240, anchor="center")
 
     root.mainloop()
 
 # Programme principal
 if __name__ == "__main__":
+    # Fonctions factices pour tester
+    
+
+    
+
     main_menu()
+
 
 

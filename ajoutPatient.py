@@ -390,65 +390,81 @@ def ajouter_patien():
 
         root.mainloop()
         
-        
-from tkinter import *
-from tkinter import messagebox, ttk
-
+# Fonction pour la connexion à la base de données
 def supprimer_container():
-    window = Tk()
-    window.title("Suppression Utilisateur")
-    window.geometry("400x250")  # Taille ajustée
-    window.resizable(False, False)  # Empêcher le redimensionnement
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="", 
+        database="formulaire"
+    )
+    cursor = conn.cursor()
 
-    # Fonction pour changer le style du bouton au survol
-    def on_hover(event):
-        btn_supprimer.configure(style="Hover.TButton")
+    root = Tk()
+    root.title("Liste des Utilisateurs")
+    root.geometry("1000x500")
+    root.configure(bg="white")
 
-    def on_leave(event):
-        btn_supprimer.configure(style="Red.TButton")
+    Label(root, text="Liste des Utilisateurs", font=("Arial", 18, "bold"), bg="white", fg="blue").pack(pady=10)
 
-    # Style des composants
+    colonnes = ("id", "prenom", "nom", "date_naissance", "sexe", "numero_tel", "email")
+    tree = ttk.Treeview(root, columns=colonnes, show="headings")
+
+    # Appliquer des couleurs avec style
     style = ttk.Style()
-    style.configure("Red.TButton", background="#DC3545", foreground="white", font=("Arial", 12, "bold"))
-    style.map("Red.TButton", background=[("active", "#A71D2A")])
-    style.configure("Hover.TButton", background="#A71D2A", foreground="white", font=("Arial", 12, "bold"))
+    style.configure("Treeview.Heading", font=("Arial", 12, "bold"), background="#ADD8E6", foreground="blue")
+    style.map("Treeview", background=[("selected", "#3399FF")])
 
-    # Label stylisé
-    label_supprimer = Label(window, text="Donner le ci code identification à supprimer :", fg="#007BFF", font=("Arial", 10, "bold"))
-    label_supprimer.pack(pady=10)
+    # Définir les en-têtes
+    for col in colonnes:
+        tree.heading(col, text=col.capitalize())
+        tree.column(col, width=130, anchor="center")
 
-    # Champ de saisie
-    entry_supprimer = Entry(window, font=("Arial", 12))
-    entry_supprimer.pack(pady=5)
+    # Appliquer des tags pour changer la couleur des lignes
+    tree.tag_configure('oddrow', background="white")
+    tree.tag_configure('evenrow', background="#f0f0f0")
 
-    # Fonction pour la connexion à la base de données
-    def get_connection():
-        import mysql.connector
-        return mysql.connector.connect(
-            host="localhost",
-            user="root",  
-            password="",  
-            database="formulaire"
-        )
+    # Exécuter la requête
+    cursor.execute("SELECT id, prenom, nom, date_naissance, sexe, numero_tel, email FROM utilisateurs")
+    utilisateurs = cursor.fetchall()
 
-    # Fonction pour supprimer un utilisateur et son dossier médical
+    # Remplir le tableau avec des lignes colorées
+    for index, utilisateur in enumerate(utilisateurs):
+        tag = 'evenrow' if index % 2 == 0 else 'oddrow'
+        tree.insert("", END, values=utilisateur, tags=(tag,))
+
+    # Scrollbar
+    scrollbar = Scrollbar(root, orient=VERTICAL, command=tree.yview)
+    tree.configure(yscroll=scrollbar.set)
+    scrollbar.pack(side=RIGHT, fill=Y)
+    tree.pack(expand=True, fill=BOTH, padx=20, pady=10)
+
+    # Fonction pour supprimer un utilisateur
     def supprimer_utilisateur():
-        user_id = entry_supprimer.get().strip()
-
-        if not user_id.isdigit():
-            messagebox.showerror("Erreur", "ci code identification doit être un nombre valide.")
+        selected_item = tree.selection()
+        if not selected_item:
+            messagebox.showerror("Erreur", "Veuillez sélectionner un utilisateur.")
             return
 
+        user_id = tree.item(selected_item, "values")[0]  # On récupère l'ID de l'utilisateur sélectionné
+
         try:
-            conn = get_connection()
+            conn = mysql.connector.connect(
+                host="localhost",
+                user="root",  
+                password="",  
+                database="formulaire"
+            )
             cursor = conn.cursor()
 
-            # Suppression
+            # Suppression des données dans les tables
             cursor.execute("DELETE FROM dossiers_medical WHERE utilisateur_id = %s", (user_id,))
             cursor.execute("DELETE FROM utilisateurs WHERE id = %s", (user_id,))
 
             conn.commit()
             messagebox.showinfo("Succès", "Utilisateur supprimé avec succès.")
+            # Réactualiser la liste des utilisateurs après suppression
+            tree.delete(selected_item)
 
         except mysql.connector.Error as e:
             messagebox.showerror("Erreur", f"Erreur MySQL : {e}")
@@ -457,20 +473,21 @@ def supprimer_container():
                 cursor.close()
                 conn.close()
 
-    # Bouton stylisé avec hover
-    btn_supprimer = ttk.Button(window, text="Supprimer", style="Red.TButton", command=supprimer_utilisateur)
+    # Bouton de suppression
+    btn_supprimer = Button(root, text="Supprimer Utilisateur", command=supprimer_utilisateur, font=("Arial", 12, "bold"), bg="#DC3545", fg="white")
     btn_supprimer.pack(pady=20)
 
-    btn_supprimer.bind("<Enter>", on_hover)
-    btn_supprimer.bind("<Leave>", on_leave)
+    cursor.close()
+    conn.close()
+    root.mainloop()
 
-    # Lancer l'application
-    window.mainloop()
+
+
 
 
 
     
-def modifier_container():
+def modifier_container(user_id):
     # Fonction pour établir la connexion MySQL
     def get_connection():
         return mysql.connector.connect(
@@ -497,11 +514,9 @@ def modifier_container():
 
     # Fonction pour modifier un utilisateur
     def modifier_utilisateur():
-        user_id = entry_modifier.get().strip()
+        
 
-        if not user_id.isdigit():
-            messagebox.showerror("Erreur", "L'ID doit être un nombre valide.")
-            return
+        
 
         try:
             # Récupération des anciennes valeurs
@@ -595,9 +610,7 @@ def modifier_container():
     style.configure("TButton", font=("Arial", 12), padding=5)
     style.configure("TEntry", padding=5)
     # Ajouter les champs du formulaire
-    create_label("ci code identification :").pack()
-    entry_modifier = ttk.Entry(form_frame)
-    entry_modifier.pack(pady=5)
+   
 
     create_label("Nouvel Email :").pack(pady=5)
     entry_email =ttk.Entry(form_frame)
@@ -668,6 +681,76 @@ def modifier_container():
     btn_modifier.pack(pady=10)
 
     window.mainloop()
+def modifier():
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="", 
+        database="formulaire"
+    )
+    cursor = conn.cursor()
+
+    root = Tk()
+    root.title("Liste des Utilisateurs")
+    root.geometry("1000x500")
+    root.configure(bg="white")
+
+    Label(root, text="Liste des Utilisateurs", font=("Arial", 18, "bold"), bg="white", fg="blue").pack(pady=10)
+
+    colonnes = ("id", "prenom", "nom", "date_naissance", "sexe", "numero_tel", "email")
+    tree = ttk.Treeview(root, columns=colonnes, show="headings")
+
+    # Appliquer des couleurs avec style
+    style = ttk.Style()
+    style.configure("Treeview.Heading", font=("Arial", 12, "bold"), background="#ADD8E6", foreground="blue")
+    style.map("Treeview", background=[("selected", "#3399FF")])
+
+    # Définir les en-têtes
+    for col in colonnes:
+        tree.heading(col, text=col.capitalize())
+        tree.column(col, width=130, anchor="center")
+
+    # Appliquer des tags pour changer la couleur des lignes
+    tree.tag_configure('oddrow', background="white")
+    tree.tag_configure('evenrow', background="#f0f0f0")
+
+    # Exécuter la requête
+    cursor.execute("SELECT id, prenom, nom, date_naissance, sexe, numero_tel, email FROM utilisateurs")
+    utilisateurs = cursor.fetchall()
+
+    # Remplir le tableau avec des lignes colorées
+    for index, utilisateur in enumerate(utilisateurs):
+        tag = 'evenrow' if index % 2 == 0 else 'oddrow'
+        tree.insert("", END, values=utilisateur, tags=(tag,))
+
+    # Scrollbar
+    scrollbar = Scrollbar(root, orient=VERTICAL, command=tree.yview)
+    tree.configure(yscroll=scrollbar.set)
+    scrollbar.pack(side=RIGHT, fill=Y)
+    tree.pack(expand=True, fill=BOTH, padx=20, pady=10)
+        # Ajouter un bouton pour modifier un utilisateur
+    def ouvrir_modification():
+        selected_item = tree.focus()
+        if not selected_item:
+            messagebox.showwarning("Attention", "Veuillez sélectionner un utilisateur.")
+            return
+
+        selected_user = tree.item(selected_item)["values"]
+        user_id = selected_user[0]  # C'est l'ID de l'utilisateur sélectionné
+
+        root.destroy()
+        modifier_container(user_id)
+
+
+
+    bouton_modifier = Button(root, text="Modifier un Utilisateur", font=("Arial", 12, "bold"), bg="#4CAF50", fg="white", command=ouvrir_modification)
+    bouton_modifier.pack(pady=10)
+
+
+    cursor.close()
+    conn.close()
+    root.mainloop()
+
 
   
 
@@ -887,7 +970,7 @@ def menu_personnes_inscrites():
     style = ttk.Style()
     style.configure("TButton", font=("Arial", 14, "bold"), padding=10, background="white")
 
-    btn_modifier = ttk.Button(window, text="Modifier les  informations", style="TButton", command=modifier_container)
+    btn_modifier = ttk.Button(window, text="Modifier les  informations", style="TButton", command=modifier)
     btn_modifier.place(relx=0.5, rely=0.4, anchor="center", width=500)
     
     btn_suprimer = ttk.Button(window, text="supprimer personne", style="TButton", command=supprimer_container)
@@ -908,7 +991,7 @@ def main_menu():
     root.resizable(False, False)
 
     # Charger l'image de fond
-    image = Image.open("image.png")
+    image = Image.open("close-up-doctor-table-with-medical-items-cup-coffee.jpg")
 
     # Créer un Canvas et y ajouter l'image
     canvas = Canvas(root, width=800, height=700)

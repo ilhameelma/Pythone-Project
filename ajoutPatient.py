@@ -6,17 +6,55 @@ import re
 from tkinter import filedialog, messagebox
 from tkinter import Tk, Button, Label, Entry, Frame, Canvas, Scrollbar, BOTH, LEFT, RIGHT, Y, VERTICAL
 from tkinter import ttk, messagebox
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from tkinter import filedialog
+import os
+# Fonction pour envoyer l'email de confirmation avec un format HTML et un nom d'expéditeur professionnel
+def envoyer_email_confirmation(email, user_id):
+    try:
+        # Configuration SMTP (à adapter avec vos informations)
+        smtp_server = "smtp.gmail.com"  # Serveur SMTP (ex: Gmail)
+        port = 587  # Port pour TLS
+        expediteur = "elyaagoubi.samira2004@gmail.com"  # Votre adresse email
+        motdepasse = "hdxziiibavovqily"  # Mot de passe ou mot de passe d'application
+        
+        # Construction du message HTML
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Confirmation d'inscription"
+        message["From"] = "Service Médical <elyaagoubi.samira2004@gmail.com>"
+        message["To"] = email
+        
+        html = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Confirmation d'inscription</h2>
+                <p>Bonjour,</p>
+                <p>Merci pour votre inscription à notre service médical.</p>
+                <p><strong>Identifiant patient (CI) :</strong> {user_id}<br>
+                <strong>Email :</strong> {email}</p>
+                <p>Conservez précieusement ces informations.</p>
+                <br>
+                <p>Cordialement,<br>L'équipe médicale</p>
+                <p><small>Ce message a été envoyé automatiquement. Veuillez ne pas répondre à cet email.</small></p>
+            </body>
+        </html>
+        """
+        
+        # Attachement HTML
+        message.attach(MIMEText(html, "html"))
+        
+        # Connexion sécurisée au serveur SMTP
+        with smtplib.SMTP(smtp_server, port) as server:
+            server.starttls()  # Chiffrement TLS
+            server.login(expediteur, motdepasse)
+            server.sendmail(expediteur, email, message.as_string())
 
-# Fonction de connexion à MySQL
-
- 
-
-
-from tkinter import *
-from tkinter import ttk, messagebox, filedialog
-from tkcalendar import DateEntry
-import mysql.connector
-import re
+        print(f"Email de confirmation envoyé à {email}")
+    except Exception as e:
+        print(f"Erreur lors de l'envoi de l'email : {e}")
+        # Vous pourriez logger cette erreur plutôt que de l'afficher
 
 ##########################################################################
 # Fonctions utilitaires et formulaire médical (Dossier Médical)
@@ -353,12 +391,20 @@ def ajouter_patien():
                 # Récupération de l'id de l'utilisateur inscrit
                 mycur.execute("SELECT id FROM utilisateurs WHERE email = %s", (email,))
                 utilisateur_id = mycur.fetchone()[0]
+                # ENVOI DE L'EMAIL DE CONFIRMATION
+                envoyer_email_confirmation(email, utilisateur_id)
                 con.close()
 
                 # Fermer la fenêtre d'inscription et ouvrir le formulaire médical
                 
                 dossier_window = Toplevel()
-                messagebox.showinfo("Succès", f"Ajout effectué pour CI code d'identification de l' utilisateur: = {utilisateur_id}", parent=self.root)
+                # Affichage du message de succès avec l'ID
+                messagebox.showinfo(
+                "Succès", 
+                f"Inscription réussie !\nVotre ID utilisateur est : {utilisateur_id}\n"
+                f"Un email de confirmation a été envoyé à {email}",
+                parent=self.root
+                 )
                 self.root.destroy()
                 formulaire_medicale(dossier_window, utilisateur_id)
             
@@ -753,9 +799,8 @@ def modifier():
 
 
   
-
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 from datetime import datetime
 import mysql.connector
@@ -763,168 +808,274 @@ from tkinter import Frame, Label, RIDGE, CENTER, LEFT, StringVar
 
 def guerison():
     def get_connection():
-        return mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="",
-            database="formulaire"
-        )
+        try:
+            conn = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="",
+                database="formulaire"
+            )
+            return conn
+        except mysql.connector.Error as err:
+            messagebox.showerror("Erreur de connexion", f"Erreur MySQL: {err}")
+            return None
 
     def formulaire_guerison(utilisateur_id):
         conn = get_connection()
+        if conn is None:
+            return
+            
         cursor = conn.cursor()
-        cursor.execute("SELECT nom, prenom FROM utilisateurs WHERE id = %s", (utilisateur_id,))
-        utilisateur = cursor.fetchone()
-        nom = utilisateur[0] if utilisateur else "Inconnu"
-        prenom = utilisateur[1] if utilisateur else "Inconnu"
-
-        cursor.execute('''CREATE TABLE IF NOT EXISTS guerison (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            utilisateur_id INT,
-            date_debut_traitement DATE,
-            date_fin_guerison DATE,
-            etat_sante_actuel TEXT,
-            symptomes_persistants TEXT,
-            traitement_en_cours TEXT,
-            etat_guerison ENUM('Guéri', 'En Cours', 'Non Guéri') NOT NULL,
-            FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
-        )''')
-        conn.commit()
-
-        def save_data():
-            date_debut_traitement = entry_date_debut.get()
-            date_fin_guerison = entry_date_fin.get()
-            etat_sante_actuel = entry_etat_sante.get()
-            symptomes_persistants = entry_symptomes.get()
-            traitement_en_cours = entry_traitement.get()
-            etat_guerison = etat_guerison_var.get()
-
-            if not etat_guerison:
-                messagebox.showerror("Erreur", "Le champ 'État final de guérison' doit être rempli !")
+        
+        try:
+            # Récupérer les infos de base de l'utilisateur
+            cursor.execute("SELECT nom, prenom FROM utilisateurs WHERE id = %s", (utilisateur_id,))
+            utilisateur = cursor.fetchone()
+            if utilisateur is None:
+                messagebox.showerror("Erreur", "Utilisateur non trouvé")
+                conn.close()
                 return
-            try:
-                date_debut = datetime.strptime(date_debut_traitement, "%Y-%m-%d")
-                date_fin = datetime.strptime(date_fin_guerison, "%Y-%m-%d") if date_fin_guerison else None
-                if date_fin and date_fin <= date_debut:
-                    messagebox.showerror("Erreur", "La date de fin doit être postérieure à la date de début.")
-                    return
-            except ValueError:
-                messagebox.showerror("Erreur", "Veuillez entrer des dates valides !")
-                return
+                
+            nom = utilisateur[0]
+            prenom = utilisateur[1]
 
-            cursor.execute("SELECT * FROM guerison WHERE utilisateur_id = %s", (utilisateur_id,))
-            if cursor.fetchone():
-                cursor.execute('''UPDATE guerison
-                    SET date_debut_traitement = %s, date_fin_guerison = %s, etat_sante_actuel = %s,
-                    symptomes_persistants = %s, traitement_en_cours = %s, etat_guerison = %s
-                    WHERE utilisateur_id = %s''',
-                               (date_debut_traitement, date_fin_guerison, etat_sante_actuel,
-                                symptomes_persistants, traitement_en_cours, etat_guerison, utilisateur_id))
+            # Vérifier si l'utilisateur a déjà des données de guérison
+            cursor.execute("SELECT date_debut_traitement, date_fin_guerison, etat_sante_actuel, "
+                          "symptomes_persistants, traitement_en_cours, etat_guerison "
+                          "FROM guerison WHERE utilisateur_id = %s", (utilisateur_id,))
+            existing_data = cursor.fetchone()
+
+            # Interface stylée
+            window = tk.Tk()
+            window.title("Formulaire de Guérison")
+            window.geometry("800x600")
+            window.configure(bg="#F5F5F5")
+
+            frame = Frame(window, bg="white", bd=2, relief=RIDGE)
+            frame.place(relx=0.5, rely=0.5, anchor=CENTER, width=550, height=550)
+
+            Label(frame, text="Formulaire de Guérison", font=("Times New Roman", 20, "bold"), 
+                  bg="white", fg="dark blue").grid(row=0, column=0, columnspan=2, pady=20)
+
+            # Champs utilisateur (lecture seule)
+            Label(frame, text="Nom:", bg="white").grid(row=1, column=0, padx=20, pady=5, sticky="w")
+            entry_nom = ttk.Entry(frame, width=30)
+            entry_nom.insert(0, nom)
+            entry_nom.config(state="readonly")
+            entry_nom.grid(row=1, column=1, pady=5)
+              
+            Label(frame, text="", bg="white").grid(row=2, column=0, padx=20)
+            Label(frame, text="Prénom:", bg="white").grid(row=3, column=0, padx=20, pady=5, sticky="w")
+            entry_prenom = ttk.Entry(frame, width=30)
+            entry_prenom.insert(0, prenom)
+            entry_prenom.config(state="readonly")
+            entry_prenom.grid(row=3, column=1, pady=5)
+            
+            # Pré-remplir les champs si des données existent
+            if existing_data:
+                date_debut = existing_data[0].strftime("%Y-%m-%d") if existing_data[0] else ""
+                date_fin = existing_data[1].strftime("%Y-%m-%d") if existing_data[1] else ""
+                etat_sante = existing_data[2] if existing_data[2] else ""
+                symptomes = existing_data[3] if existing_data[3] else ""
+                traitement = existing_data[4] if existing_data[4] else ""
+                etat_guerison = existing_data[5] if existing_data[5] else "En Cours"
             else:
-                cursor.execute('''INSERT INTO guerison (
-                    utilisateur_id, date_debut_traitement, date_fin_guerison, etat_sante_actuel,
-                    symptomes_persistants, traitement_en_cours, etat_guerison
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)''',
-                               (utilisateur_id, date_debut_traitement, date_fin_guerison, etat_sante_actuel,
-                                symptomes_persistants, traitement_en_cours, etat_guerison))
-            conn.commit()
+                date_debut = ""
+                date_fin = ""
+                etat_sante = ""
+                symptomes = ""
+                traitement = ""
+                etat_guerison = "En Cours"
+
+            # Champs de formulaire
+            Label(frame, text="", bg="white").grid(row=4, column=0, padx=20)
+            Label(frame, text="Date début traitement:", bg="white").grid(row=5, column=0, padx=20, pady=5, sticky="w")
+            entry_date_debut = DateEntry(frame, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
+            if date_debut:
+                entry_date_debut.set_date(date_debut)
+            entry_date_debut.grid(row=5, column=1, pady=5)
+            
+            Label(frame, text="", bg="white").grid(row=6, column=0, padx=20)
+            Label(frame, text="Date fin guérison:", bg="white").grid(row=7, column=0, padx=20, pady=5, sticky="w")
+            entry_date_fin = DateEntry(frame, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
+            if date_fin:
+                entry_date_fin.set_date(date_fin)
+            entry_date_fin.grid(row=7, column=1, pady=5)
+            
+            Label(frame, text="", bg="white").grid(row=8, column=0, padx=20)
+            Label(frame, text="État de santé actuel:", bg="white").grid(row=9, column=0, padx=20, pady=5, sticky="w")
+            entry_etat_sante = ttk.Entry(frame, width=30)
+            entry_etat_sante.insert(0, etat_sante)
+            entry_etat_sante.grid(row=9, column=1, pady=5)
+            
+            Label(frame, text="", bg="white").grid(row=10, column=0, padx=20)
+            Label(frame, text="Symptômes persistants:", bg="white").grid(row=11, column=0, padx=20, pady=5, sticky="w")
+            entry_symptomes = ttk.Entry(frame, width=30)
+            entry_symptomes.insert(0, symptomes)
+            entry_symptomes.grid(row=11, column=1, pady=5)
+            
+            Label(frame, text="", bg="white").grid(row=12, column=0, padx=20)
+            Label(frame, text="Traitement en cours:", bg="white").grid(row=13, column=0, padx=20, pady=5, sticky="w")
+            entry_traitement = ttk.Entry(frame, width=30)
+            entry_traitement.insert(0, traitement)
+            entry_traitement.grid(row=13, column=1, pady=5)
+            
+            Label(frame, text="", bg="white").grid(row=14, column=0, padx=20)
+            Label(frame, text="État final de guérison:", bg="white").grid(row=15, column=0, padx=20, pady=5, sticky="w")
+            etat_guerison_var = StringVar(value=etat_guerison)
+            frame_radio = Frame(frame, bg="white")
+            frame_radio.grid(row=15, column=1, pady=5, sticky="w")
+            ttk.Radiobutton(frame_radio, text="Guéri", variable=etat_guerison_var, value="Guéri").pack(side=LEFT, padx=5)
+            ttk.Radiobutton(frame_radio, text="En Cours", variable=etat_guerison_var, value="En Cours").pack(side=LEFT, padx=5)
+            ttk.Radiobutton(frame_radio, text="Non Guéri", variable=etat_guerison_var, value="Non Guéri").pack(side=LEFT, padx=5)
+
+            def save_data():
+                nonlocal existing_data
+                date_debut_traitement = entry_date_debut.get()
+                date_fin_guerison = entry_date_fin.get()
+                etat_sante_actuel = entry_etat_sante.get()
+                symptomes_persistants = entry_symptomes.get()
+                traitement_en_cours = entry_traitement.get()
+                etat_guerison = etat_guerison_var.get()
+
+                if not etat_guerison:
+                    messagebox.showerror("Erreur", "Le champ 'État final de guérison' doit être rempli !")
+                    return
+                try:
+                    date_debut = datetime.strptime(date_debut_traitement, "%Y-%m-%d")
+                    date_fin = datetime.strptime(date_fin_guerison, "%Y-%m-%d") if date_fin_guerison else None
+                    if date_fin and date_fin <= date_debut:
+                        messagebox.showerror("Erreur", "La date de fin doit être postérieure à la date de début.")
+                        return
+                except ValueError:
+                    messagebox.showerror("Erreur", "Veuillez entrer des dates valides !")
+                    return
+
+                try:
+                    if existing_data:
+                        cursor.execute('''UPDATE guerison
+                            SET date_debut_traitement = %s, date_fin_guerison = %s, etat_sante_actuel = %s,
+                            symptomes_persistants = %s, traitement_en_cours = %s, etat_guerison = %s
+                            WHERE utilisateur_id = %s''',
+                                   (date_debut_traitement, date_fin_guerison, etat_sante_actuel,
+                                    symptomes_persistants, traitement_en_cours, etat_guerison, utilisateur_id))
+                    else:
+                        cursor.execute('''INSERT INTO guerison (
+                            utilisateur_id, date_debut_traitement, date_fin_guerison, etat_sante_actuel,
+                            symptomes_persistants, traitement_en_cours, etat_guerison
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)''',
+                                   (utilisateur_id, date_debut_traitement, date_fin_guerison, etat_sante_actuel,
+                                    symptomes_persistants, traitement_en_cours, etat_guerison))
+                    conn.commit()
+                    messagebox.showinfo("Succès", "Les informations de guérison ont été enregistrées avec succès.")
+                    window.destroy()
+                except mysql.connector.Error as err:
+                    messagebox.showerror("Erreur MySQL", f"Erreur lors de l'enregistrement: {err}")
+                finally:
+                    conn.close()
+
+            tk.Button(frame, text="Enregistrer", font=("Times New Roman", 15), bg="dark blue", fg="white",
+                      command=save_data).grid(row=16, column=1, columnspan=2, pady=20)
+
+            window.mainloop()
+
+        except mysql.connector.Error as err:
+            messagebox.showerror("Erreur MySQL", f"Erreur lors de la récupération des données: {err}")
             conn.close()
 
-            messagebox.showinfo("Succès", "Les informations de guérison ont été enregistrées avec succès.")
-            window.destroy()
-
-        # Interface stylée
-        window = tk.Tk()
-        window.title("Formulaire de Guérison")
-        window.geometry("800x600")
-        window.configure(bg="#F5F5F5")
-
-        frame = Frame(window, bg="white", bd=2, relief=RIDGE)
-        frame.place(relx=0.5, rely=0.5, anchor=CENTER, width=550, height=550)
-
-        Label(frame, text="Formulaire de Guérison", font=("Times New Roman", 20, "bold"), bg="white", fg="dark blue").grid(row=0, column=0, columnspan=2, pady=20)
-
-        Label(frame, text="Nom:", bg="white").grid(row=1, column=0, padx=20, pady=5, sticky="w")
-        entry_nom = ttk.Entry(frame, width=30)
-        entry_nom.insert(0, nom)
-        entry_nom.config(state="readonly")
-        entry_nom.grid(row=1, column=1, pady=5)
-          
-        abelVide=Label(frame, text="",bg="white").grid(row=2, column=0, padx=20)  # Espacement vertical
-        Label(frame, text="Prénom:", bg="white").grid(row=3, column=0, padx=20, pady=5, sticky="w")
-        entry_prenom = ttk.Entry(frame, width=30)
-        entry_prenom.insert(0, prenom)
-        entry_prenom.config(state="readonly")
-        entry_prenom.grid(row=3, column=1, pady=5)
-        abelVide=Label(frame, text="",bg="white").grid(row=4, column=0, padx=20)  # Espacement vertical
-        Label(frame, text="Date début traitement:", bg="white").grid(row=5, column=0, padx=20, pady=5, sticky="w")
-        entry_date_debut = DateEntry(frame, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
-        entry_date_debut.grid(row=5, column=1, pady=5)
-        abelVide=Label(frame, text="",bg="white").grid(row=6, column=0, padx=20)  # Espacement vertical
-        Label(frame, text="Date fin guérison:", bg="white").grid(row=7, column=0, padx=20, pady=5, sticky="w")
-        entry_date_fin = DateEntry(frame, width=20, font=("Times New Roman", 12), date_pattern="yyyy-MM-dd")
-        entry_date_fin.grid(row=7, column=1, pady=5)
-        abelVide=Label(frame, text="",bg="white").grid(row=8, column=0, padx=20)  # Espacement vertical
-        Label(frame, text="État de santé actuel:", bg="white").grid(row=9, column=0, padx=20, pady=5, sticky="w")
-        entry_etat_sante = ttk.Entry(frame, width=30)
-        entry_etat_sante.grid(row=9, column=1, pady=5)
-        abelVide=Label(frame, text="",bg="white").grid(row=10, column=0, padx=20)  # Espacement vertical
-        Label(frame, text="Symptômes persistants:", bg="white").grid(row=11, column=0, padx=20, pady=5, sticky="w")
-        entry_symptomes = ttk.Entry(frame, width=30)
-        entry_symptomes.grid(row=11, column=1, pady=5)
-        abelVide=Label(frame, text="",bg="white").grid(row=12, column=0, padx=20)  # Espacement vertical
-        Label(frame, text="Traitement en cours:", bg="white").grid(row=13, column=0, padx=20, pady=5, sticky="w")
-        entry_traitement = ttk.Entry(frame, width=30)
-        entry_traitement.grid(row=13, column=1, pady=5)
-        abelVide=Label(frame, text="",bg="white").grid(row=14, column=0, padx=20)  # Espacement vertical
-        Label(frame, text="État final de guérison:", bg="white").grid(row=15, column=0, padx=20, pady=5, sticky="w")
-        etat_guerison_var = StringVar(value="En Cours")
-        frame_radio = Frame(frame, bg="white")
-        frame_radio.grid(row=15, column=1, pady=5, sticky="w")
-        ttk.Radiobutton(frame_radio, text="Guéri", variable=etat_guerison_var, value="Guéri").pack(side=LEFT, padx=5)
-        ttk.Radiobutton(frame_radio, text="En Cours", variable=etat_guerison_var, value="En Cours").pack(side=LEFT, padx=5)
-        ttk.Radiobutton(frame_radio, text="Non Guéri", variable=etat_guerison_var, value="Non Guéri").pack(side=LEFT, padx=5)
-
-        tk.Button(frame, text="Enregistrer", font=("Times New Roman", 15), bg="dark blue", fg="white",
-                  command=save_data).grid(row=16, column=1, columnspan=2, pady=20)
-
-        window.mainloop()
-
-    # Fenêtre ID utilisateur
+    # Fenêtre principale avec tableau des utilisateurs et leurs états de guérison
     main_window = tk.Tk()
-    main_window.title("Vérification ID utilisateur")
-    main_window.geometry("500x200")
+    main_window.title("Liste des Patients et leur État de Guérison")
+    main_window.geometry("1200x600")
     main_window.config(bg="#F5F5F5")
 
-    frame_id = Frame(main_window, bg="white", bd=2, relief=RIDGE)
-    frame_id.place(relx=0.5, rely=0.5, anchor=CENTER, width=400, height=150)
+    # Frame pour le tableau
+    frame_table = Frame(main_window, bg="white", bd=2, relief=RIDGE)
+    frame_table.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
 
-    Label(frame_id, text="Entrez votre CI code d'identification utilisateur:", font=("Arial", 12), bg="white").grid(row=0, column=0, padx=10, pady=20)
-    entry_id_utilisateur = ttk.Entry(frame_id, width=30)
-    entry_id_utilisateur.grid(row=0, column=1, padx=10, pady=20)
+    # Titre
+    Label(frame_table, text="Liste des Patients et leur État de Guérison - Sélectionnez un patient", 
+          font=("Arial", 14, "bold"), bg="white").pack(pady=10)
 
-    def verifier_id():
-        utilisateur_id = entry_id_utilisateur.get()
-        if not utilisateur_id.isdigit():
-            messagebox.showerror("Erreur", "L'ID utilisateur doit être un nombre.")
-            return
+    # Treeview pour afficher les utilisateurs et leurs infos de guérison
+    tree = ttk.Treeview(frame_table, columns=("ID", "Prénom", "Nom", "Date Naissance", "Sexe", 
+                                            "Début Traitement", "Fin Guérison", "État Guérison"), 
+                       show="headings")
+    tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        utilisateur_id = int(utilisateur_id)
+    # Configuration des colonnes
+    columns = [
+        ("ID", 80), ("Prénom", 100), ("Nom", 100), 
+        ("Date Naissance", 100), ("Sexe", 80),
+        ("Début Traitement", 120), ("Fin Guérison", 120), 
+        ("État Guérison", 100)
+    ]
+    
+    for col, width in columns:
+        tree.heading(col, text=col)
+        tree.column(col, width=width, anchor=CENTER)
+
+    # Remplir le tableau avec les données de la base de données
+    def load_users():
         conn = get_connection()
+        if conn is None:
+            return
+            
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM utilisateurs WHERE id = %s", (utilisateur_id,))
-        if cursor.fetchone():
-            main_window.destroy()
-            formulaire_guerison(utilisateur_id)
-        else:
-            messagebox.showerror("Erreur", "ID utilisateur incorrect.")
+        
+        try:
+            # Requête pour joindre les tables utilisateurs et guerison
+            cursor.execute('''SELECT u.id, u.prenom, u.nom, u.date_naissance, u.sexe, 
+                             g.date_debut_traitement, g.date_fin_guerison, g.etat_guerison
+                             FROM utilisateurs u
+                             LEFT JOIN guerison g ON u.id = g.utilisateur_id''')
+            
+            for row in tree.get_children():
+                tree.delete(row)
+                
+            for user in cursor.fetchall():
+                # Formater les dates pour l'affichage
+                date_debut = user[5].strftime("%Y-%m-%d") if user[5] else ""
+                date_fin = user[6].strftime("%Y-%m-%d") if user[6] else ""
+                etat = user[7] if user[7] else "Non renseigné"
+                
+                tree.insert("", tk.END, values=(
+                    user[0], user[1], user[2], 
+                    user[3].strftime("%Y-%m-%d") if user[3] else "", 
+                    user[4], 
+                    date_debut, 
+                    date_fin, 
+                    etat
+                ))
+        except mysql.connector.Error as err:
+            messagebox.showerror("Erreur MySQL", f"Erreur lors du chargement des données: {err}")
+        finally:
+            conn.close()
 
-    tk.Button(frame_id, text="Vérifier", bg="blue", fg="white", font=("Arial", 12, "bold"),
-              command=verifier_id).grid(row=1, column=0, columnspan=2, pady=10)
+    # Bouton de chargement
+    btn_load = tk.Button(frame_table, text="Actualiser la liste", command=load_users, 
+                         bg="blue", fg="white", font=("Arial", 10))
+    btn_load.pack(pady=5)
+
+    # Bouton pour ouvrir le formulaire de guérison
+    def open_guerison_form():
+        selected_item = tree.focus()
+        if not selected_item:
+            messagebox.showerror("Erreur", "Veuillez sélectionner un patient")
+            return
+        user_data = tree.item(selected_item)['values']
+        user_id = user_data[0]
+        main_window.destroy()
+        formulaire_guerison(user_id)
+
+    btn_select = tk.Button(frame_table, text="Modifier/Remplir formulaire de guérison", command=open_guerison_form,
+                          bg="green", fg="white", font=("Arial", 12, "bold"))
+    btn_select.pack(pady=10)
+
+    # Charger les utilisateurs au démarrage
+    load_users()
 
     main_window.mainloop()
-
-
 
 
 
@@ -952,7 +1103,7 @@ def menu_personnes_inscrites():
     window.resizable(False, False)  # Empêcher le redimensionnement
 
     # Charger et ajuster l'image de fond
-    image_fond = Image.open("WhatsApp Image 2025-04-12 at 22.39.55_b1ca3fe0.jpg")
+    image_fond = Image.open("medical.png")
     image_fond = image_fond.resize((800, 700), Image.LANCZOS)
     bg_image = ImageTk.PhotoImage(image_fond)
 
@@ -994,7 +1145,7 @@ def main_menu():
     root.resizable(False, False)
 
     # Charger l'image de fond
-    image = Image.open("close-up-doctor-table-with-medical-items-cup-coffee.jpg")
+    image = Image.open("image.png")
 
     # Créer un Canvas et y ajouter l'image
     canvas = Canvas(root, width=800, height=700)
@@ -1046,3 +1197,4 @@ if __name__ == "__main__":
 
 
 
+  

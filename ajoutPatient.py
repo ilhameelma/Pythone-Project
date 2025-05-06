@@ -937,11 +937,13 @@ def guerison():
 
 
 
-
+import webbrowser
 from tkinter import Tk, Label, Canvas, Toplevel
 from tkinter import ttk
 from PIL import Image, ImageTk  # Pour gérer les images
-
+def ouvrir_interface_web():
+    # Remplace cette URL par celle de ton serveur local ou distant
+    webbrowser.open("http://localhost/MedVisualisation/projetSite.php")
 def menu_personnes_inscrites():
     # Création de la fenêtre secondaire avec Toplevel pour éviter les conflits avec Tk()
     window = Toplevel()
@@ -969,7 +971,8 @@ def menu_personnes_inscrites():
     # Boutons centrés
     style = ttk.Style()
     style.configure("TButton", font=("Arial", 14, "bold"), padding=10, background="white")
-
+    btn_siteweb = ttk.Button(window, text="Accéder à l'interface Web", style="TButton", command=ouvrir_interface_web)
+    btn_siteweb.place(relx=0.5, rely=0.7, anchor="center", width=500)
     btn_modifier = ttk.Button(window, text="Modifier les  informations", style="TButton", command=modifier)
     btn_modifier.place(relx=0.5, rely=0.4, anchor="center", width=500)
     
